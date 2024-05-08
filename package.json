@@ -1,0 +1,74 @@
+{
+  "name": "make-runbook",
+  "displayName": "make-runbook",
+  "description": "Generates a runnable markdown file to make any docker project",
+  "version": "0.0.4",
+  "publisher": "docker",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/docker/docker-make-runbook.git"
+  },
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:[Dd]ocker*"
+  ],
+  "main": "./out/extension.js",
+  "extensionPack": [
+    "docker.make-runbook",
+    "docker.vscode-docker"
+  ],
+  "extensionDependencies": [
+    "ms-azuretools.vscode-docker"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Docker Make Runbook",
+      "properties": {
+        "docker.make-runbook.openai": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "docker.make-runbook.generate",
+        "title": "Generate a runbook for this project"
+      },
+      {
+        "command": "docker.make-runbook.run",
+        "title": "Run workspace commands in terminal"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.88.0",
+    "@typescript-eslint/eslint-plugin": "^7.4.0",
+    "@typescript-eslint/parser": "^7.4.0",
+    "@vscode/test-cli": "^0.0.8",
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "openai": "^4.38.5"
+  }
+}
