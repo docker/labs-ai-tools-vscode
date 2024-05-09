@@ -81,4 +81,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		terminal.show();
 
 	});
+
+	void dockerLSP.sendRequest("docker/markdown-blocks");
 }
