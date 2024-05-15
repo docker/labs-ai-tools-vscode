@@ -98,30 +98,28 @@ export const generateRunbook = () => vscode.window.withProgress({ location: vsco
 
         const facts = await dockerLSP.sendRequest("docker/project-facts");
 
-        progress.report({ increment: 5, message: "Generating..." });
-
-
+        progress.report({ increment: 5, message: "Starting LLM..." });
 
         const openai = new OpenAI({
             apiKey,
+            baseURL: await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string
         });
 
-        let completionStream;
+        progress.report({ increment: 5, message: "Preparing payload..." });
 
-        try {
-            completionStream = await openai.chat.completions.create({
-                messages: prepareProjectPrompt(facts, authPayload.Username),
-                model: 'gpt-4',
-                stream: true
-            });
-        }
-        catch (e) {
-            const message = (e as Error).message;
-            if (message && message.startsWith('403')) {
-                return vscode.window.showErrorMessage('You need to log in to Docker Desktop to use this extension.', { modal: true });
-            }
-            throw e;
-        }
+        const messages = prepareProjectPrompt(facts, authPayload.Username);
+
+        progress.report({ increment: 5, message: "Calling LLM..." });
+
+        const model = await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-model") as string;
+
+        const completionStream = await openai.chat.completions.create({
+            messages,
+            model,
+            stream: true
+        });
+
+        progress.report({ increment: 5, message: `Streaming ${model}` });
 
         for await (const chunk of completionStream) {
             await editor.edit((edit) => {
@@ -131,9 +129,11 @@ export const generateRunbook = () => vscode.window.withProgress({ location: vsco
                 );
             });
         }
+
         await doc.save();
     } catch (e: unknown) {
-        void editor.edit((edit) => {
+        await vscode.window.showErrorMessage("Error generating runbook");
+        await editor.edit((edit) => {
             edit.insert(
                 new vscode.Position(editor.document.lineCount, 0),
                 '```json\n' + (e as Error).toString() + '\n```'

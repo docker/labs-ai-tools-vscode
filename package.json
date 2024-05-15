@@ -2,7 +2,7 @@
   "name": "make-runbook",
   "displayName": "make-runbook",
   "description": "Generates a runnable markdown file to make any docker project",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -33,6 +33,16 @@
           "type": "string",
           "default": "",
           "description": "OpenAI API key"
+        },
+        "docker.make-runbook.openai-base": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI base API endpoint"
+        },
+        "docker.make-runbook.openai-model": {
+          "type": "string",
+          "default": "gpt-4",
+          "description": "OpenAI compatible model"
         }
       }
     },
