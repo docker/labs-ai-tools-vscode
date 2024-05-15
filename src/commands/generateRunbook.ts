@@ -63,9 +63,10 @@ export const generateRunbook = () => vscode.window.withProgress({ location: vsco
     }
 
     const apiKey = vscode.workspace.getConfiguration("docker.make-runbook").get("openai") as string;
+    const endpoint = vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string;
 
-    if (!apiKey) {
-        const result = await vscode.window.showErrorMessage("OpenAI API key not set. Please set it in the settings.", { modal: true }, "Edit setting");
+    if (!apiKey && endpoint.includes("api.openai.com")) {
+        const result = await vscode.window.showErrorMessage("OpenAI API key not set. Please set it in the settings or change the base URL", { modal: true }, "Edit setting");
         if (result === "Edit setting") {
             await vscode.commands.executeCommand("workbench.action.openSettings", 'docker.make-runbook.openai');
         }
