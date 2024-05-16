@@ -18,10 +18,6 @@
     "workspaceContains:[Dd]ocker*"
   ],
   "main": "./out/extension.js",
-  "extensionPack": [
-    "docker.make-runbook",
-    "docker.vscode-docker"
-  ],
   "extensionDependencies": [
     "ms-azuretools.vscode-docker"
   ],
