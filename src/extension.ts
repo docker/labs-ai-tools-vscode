@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { generateRunbook } from './commands/generateRunbook';
 
 import { runHotCommand } from './commands/runHotCommand';
+import { setOpenAIKey } from './commands/setOpenAIKey';
 
 export const workspaceCommands = {} as {
 	[id: string]:
@@ -51,6 +52,24 @@ export async function activate(context: vscode.ExtensionContext) {
 	const api = await dockerExt.activate();
 
 	dockerLSP = await pollLSPOrThrow(api);
+
+	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.make-runbook.set-openai-api-key', () => {
+		setOpenAIKey(context.secrets);
+	});
+
+	context.subscriptions.push(setOpenAIKeyCommand);
+
+	const openAIKey = await context.secrets.get('openAIKey');
+
+	if (!openAIKey) {
+		vscode.window.showErrorMessage('OpenAI key must be set to use this extension.', 'Set Key').then(
+			async (res) => {
+				if (res === 'Set Key') {
+					await setOpenAIKey(context.secrets);
+				}
+			});
+	}
+
 
 	let makeRunbook = vscode.commands.registerCommand('docker.make-runbook.generate', generateRunbook);
 

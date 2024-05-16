@@ -25,20 +25,31 @@
     "configuration": {
       "title": "Docker Make Runbook",
       "properties": {
-        "docker.make-runbook.openai": {
-          "type": "string",
-          "default": "",
-          "description": "OpenAI API key"
-        },
         "docker.make-runbook.openai-base": {
           "type": "string",
-          "default": "https://api.openai.com/v1",
-          "description": "OpenAI base API endpoint"
+          "default": "OpenAI",
+          "description": "OpenAI base API endpoint",
+          "enum": [
+            "OpenAI",
+            "Ollama"
+          ],
+          "enumDescriptions": [
+            "https://api.openai.com/v1",
+            "http://localhost:11434/v1"
+          ]
         },
         "docker.make-runbook.openai-model": {
           "type": "string",
           "default": "gpt-4",
-          "description": "OpenAI compatible model"
+          "description": "OpenAI compatible model",
+          "enum": [
+            "gpt-4",
+            "llama2"
+          ],
+          "enumDescriptions": [
+            "OpenAI GPT-4",
+            "Ollama Llama2"
+          ]
         },
         "docker.make-runbook.prompt-image": {
           "type": "string",
@@ -55,6 +66,10 @@
       {
         "command": "docker.make-runbook.run",
         "title": "Run workspace commands in terminal"
+      },
+      {
+        "command": "docker.make-runbook.set-openai-api-key",
+        "title": "Set OpenAI API key for Docker Make Runbook"
       }
     ]
   },
