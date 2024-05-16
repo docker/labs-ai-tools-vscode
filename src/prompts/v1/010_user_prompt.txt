@@ -38,16 +38,24 @@ Dockerfile at {{f.path}} contains:
 
 {% endfor %}
 
+{% if project-facts.project/dockerfiles|empty? %}
+
 The project has the following Docker Compose files:
 
 {% for f in project-facts.project/composefiles %}
 
-Dockerfile at {{f.path}} contains:
+Compose file at {{f.path}} contains:
 {{f.content}}
 
 {% endfor %}
 
-The project has the following languages used:
+{% else %}
+
+I am not using Docker Compose in this project.
+
+{% endif %}
+
+My project uses the following languages:
 
 {{languages}}
 
