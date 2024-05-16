@@ -39,7 +39,7 @@ The project has the following Docker Compose files:
 
 The project has the following languages used:
 
-{{project/linguist}}
+{{languages}}
 
 Format runnable sections as code blocks.
 For example, use triple backticks to format code blocks in markdown.

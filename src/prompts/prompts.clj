@@ -12,7 +12,16 @@
    :dockerfiles (->> project-facts
                      :project/dockerfiles
                      (map :path)
-                     (string/join ", "))})
+                     (string/join ", "))
+   :composefiles (->> project-facts
+                      :project/composefiles
+                      (map :path)
+                      (string/join ", "))
+   :languages (->> project-facts
+                   :github/linguist
+                   keys
+                   (map name)
+                   (string/join ", "))})
 
 (defn- name-matches [re]
   (fn [p] (re-matches re (fs/file-name p))))
@@ -47,7 +56,7 @@
 
 (defn prompts [& args]
   (println
-    (json/generate-string (apply -prompts args))))
+   (json/generate-string (apply -prompts args))))
 
 (apply prompts *command-line-args*)
 
