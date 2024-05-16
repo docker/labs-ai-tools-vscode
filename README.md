@@ -8,7 +8,7 @@ The Docker Runbook Generator is a standalone VSCode extension to add additional 
 
 See the following for an example:
 
-![runbook demo video](https://github.com/docker/docker-vscode/assets/5000430/6da2c934-35f7-470d-962e-a2c9a43a335b)
+![runbook demo video](./screenshots/demo.gif)
 
 ## Getting started
 
