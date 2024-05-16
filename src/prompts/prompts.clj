@@ -21,7 +21,8 @@
                    :github/linguist
                    keys
                    (map name)
-                   (string/join ", "))})
+                   (string/join ", "))
+   :project-facts project-facts})
 
 (defn- name-matches [re]
   (fn [p] (re-matches re (fs/file-name p))))
