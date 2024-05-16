@@ -17,8 +17,23 @@ See the following for an example:
 
 1. Install latest VSIX file https://github.com/docker/labs-make-runbook/releases
 2. Open Workspace
-3. Execute command `>Generate a runbook for this project`
+3. Configure OpenAI API key in VSCode settings: `docker.make-runbook.openai` 
+4. Execute command `>Generate a runbook for this project`
 
 This project is a research prototype. It is ready to try and will give results for any project you try it on.
 
 We are still actively working on the prompt engineering.
+
+## Development
+
+### Ollama support
+We use the OpenAI Typescript client, meaning all OpenAI compatible models can be used. 
+
+Configure the model and endpoint using settings
+`docker.make-runbook.openai-base` and `docker.make-runbook.openai-model`
+
+### Changing prompts
+See readme in ./src/prompts
+
+### Local developement
+
