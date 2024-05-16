@@ -5,7 +5,7 @@ This project does not specifically require or provide instructions for setting u
 # Build
 
 ```sh
-#docker:command=dev
+#docker:command=build
 docker build -t vonwig/prompts -f Dockerfile .
 ```
 
@@ -16,6 +16,6 @@ This command will build your Docker image with the tagname "vonwig/myproject:lat
 To run this project, use Docker run command:
 
 ```sh
-#docker:command=dev
-docker run vonwig/prompts
+#docker:command=run
+docker run vonwig/prompts "{}" "jimclark106" "darwin"
 ```
