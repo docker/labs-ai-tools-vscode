@@ -65,13 +65,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.window.showErrorMessage('OpenAI key must be set to use this extension.', 'Set Key').then(
 			async (res) => {
 				if (res === 'Set Key') {
-					await setOpenAIKey(context.secrets);
+					await setOpenAIKey(context.secrets, true);
 				}
 			});
 	}
 
-
-	let makeRunbook = vscode.commands.registerCommand('docker.make-runbook.generate', generateRunbook);
+	let makeRunbook = vscode.commands.registerCommand('docker.make-runbook.generate', () => generateRunbook(context.secrets));
 
 	context.subscriptions.push(makeRunbook);
 

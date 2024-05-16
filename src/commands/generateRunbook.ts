@@ -7,6 +7,12 @@ import OpenAI from 'openai';
 import { prepareProjectPrompt } from "../utils/preparePrompt";
 import { dockerLSP } from "../extension";
 
+// Must match package.json contributed configuration
+const ENDPOINT_ENUM_MAP = {
+    OpenAI: "https://api.openai.com/v1",
+    Ollama: "http://localhost:11434/v1"
+};
+
 const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder) => {
     const uri = vscode.Uri.file(
         workspaceFolder.uri.fsPath + "/runbook.md"
@@ -38,7 +44,7 @@ const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder) => {
     return { editor, doc };
 };
 
-export const generateRunbook = () => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
+export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
 
     progress.report({ increment: 0, message: "Starting..." });
 
@@ -62,7 +68,8 @@ export const generateRunbook = () => vscode.window.withProgress({ location: vsco
         workspaceFolder = workspaceFolders[option.index];
     }
 
-    const apiKey = vscode.workspace.getConfiguration("docker.make-runbook").get("openai") as string;
+    const apiKey = await secrets.get("openAIKey");
+
     const endpoint = vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string;
 
     if (!apiKey && endpoint.includes("api.openai.com")) {
@@ -103,7 +110,7 @@ export const generateRunbook = () => vscode.window.withProgress({ location: vsco
 
         const openai = new OpenAI({
             apiKey,
-            baseURL: await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string
+            baseURL: ENDPOINT_ENUM_MAP[(await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as 'Ollama' | 'OpenAI')]
         });
 
         progress.report({ increment: 5, message: "Preparing payload..." });
