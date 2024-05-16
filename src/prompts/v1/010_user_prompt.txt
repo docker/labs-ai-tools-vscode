@@ -6,31 +6,42 @@ The command for Docker Compose is `docker compose` and not`docker-compose`.
 
 When using docker compose, the user should use `docker compose up --build`.
 
-has full access to run docker commands. 
+I have full access to run docker commands because of Docker Desktop. 
 
-The user's current working directory `.` is the root of their project. They want to start this for local development.
+My $PWD `.` is the root of my project. 
 
-The user's platform is: {{platform}}
+I want to run this project for local development.
 
-Before you generate a runbook, 
-provide a way to setup env vars. 
+I'm currently on {{platform}} architecture.
+
+Before you generate a runbook, provide a way to setup env vars. 
 If the project requires env vars or references an env file, mention that. 
-If it doesn't mention env vars, tell the user.
+If it doesn't mention env vars, tell me.
 
-After steps to set the environment variables, generate a runbook. A runbook for a Docker project 
-consists of 3 parts: Build, Run, Share. Use regular markdown headings for these sections.
+After steps to set the environment variables, generate a runbook. 
+A runbook for a Docker project consists of 3 parts: Build, Run, Share. Use regular markdown headings for these sections.
 The build section describes how to build the project.
-If the user is using Docker Compose, simply say they do not need to build separately.
+If the project has a Docker Compose file, simply say I do not need to build separately.
 An image tag should be used if needed.
-The run section describes how to run the project docker.
-The share section describes how to share the project
+The run section describes how to run the project with Docker.
+The share section describes how to share the project on Docker hub.
 such as `docker push repo/imagename`. Do not recommend stopping or removing containers.
 
 The user is logged in to Docker Hub as {{username}}
 
-The project has the following Dockerfiles: {{dockerfiles}}
+The project has the following Dockerfiles:
 
-Format runnable sections as code blocks. 
-For example, use triple backticks to format code blocks in markdown.\
+{{dockerfiles}}
+
+The project has the following Docker Compose files:
+
+{{composefiles}}
+
+The project has the following languages used:
+
+{{project/linguist}}
+
+Format runnable sections as code blocks.
+For example, use triple backticks to format code blocks in markdown.
 Use ```sh for UNIX shell commands and ```powershell for PowerShell commands.
 
