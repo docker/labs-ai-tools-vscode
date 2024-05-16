@@ -32,6 +32,8 @@ We use the OpenAI Typescript client, meaning all OpenAI compatible models can be
 Configure the model and endpoint using settings
 `docker.make-runbook.openai-base` and `docker.make-runbook.openai-model`
 
+![ollama config screenshot](./screenshots/ollama.png)
+
 ### Changing prompts
 See readme in ./src/prompts
 
