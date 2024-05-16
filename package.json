@@ -39,6 +39,11 @@
           "type": "string",
           "default": "gpt-4",
           "description": "OpenAI compatible model"
+        },
+        "docker.make-runbook.prompt-image": {
+          "type": "string",
+          "default": "vonwig/prompts:latest",
+          "description": "Image tag used for prompt generation"
         }
       }
     },
