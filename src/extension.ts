@@ -62,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const openAIKey = await context.secrets.get('openAIKey');
 
 	if (!openAIKey) {
-		vscode.window.showErrorMessage('OpenAI key must be set to use this extension.', 'Set Key').then(
+		await vscode.window.showErrorMessage('OpenAI key must be set to use this extension.', 'Set Key').then(
 			async (res) => {
 				if (res === 'Set Key') {
 					await setOpenAIKey(context.secrets, true);
