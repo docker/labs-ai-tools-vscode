@@ -68,16 +68,19 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         workspaceFolder = workspaceFolders[option.index];
     }
 
-    const apiKey = await secrets.get("openAIKey");
+    let apiKey = await secrets.get("openAIKey");
 
     const endpoint = vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string;
 
     if (!apiKey && endpoint.includes("api.openai.com")) {
         const result = await vscode.window.showErrorMessage("OpenAI API key not set. Please set it in the settings or change the base URL", { modal: true }, "Edit setting");
         if (result === "Edit setting") {
-            await vscode.commands.executeCommand("workbench.action.openSettings", 'docker.make-runbook.openai');
+            await vscode.commands.executeCommand("docker.make-runbook.set-openai-api-key", secrets, true);
+            apiKey = await secrets.get("openAIKey");
         }
-        return;
+        else {
+            return;
+        }
     }
 
     const { editor, doc } = (await prepareRunbookFile(workspaceFolder) || {});
@@ -140,13 +143,14 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         await doc.save();
     } catch (e: unknown) {
-        await vscode.window.showErrorMessage("Error generating runbook");
+        void vscode.window.showErrorMessage("Error generating runbook");
         await editor.edit((edit) => {
             edit.insert(
                 new vscode.Position(editor.document.lineCount, 0),
                 '```json\n' + (e as Error).toString() + '\n```'
             );
         });
+        return;
     }
 });
 
