@@ -44,11 +44,13 @@
           "description": "OpenAI compatible model",
           "enum": [
             "gpt-4",
-            "llama2"
+            "llama2",
+            "llama3"
           ],
           "enumDescriptions": [
             "OpenAI GPT-4",
-            "Ollama Llama2"
+            "Ollama Llama2",
+            "Ollama Llama3"
           ]
         },
         "docker.make-runbook.prompt-image": {
