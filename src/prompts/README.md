@@ -18,18 +18,14 @@ docker run vonwig/prompts "{...}" "jimclark106" "darwin"
 
 ## Custom prompts
 
-1.  create a directory like the example `v1` directory in your folder.
-
-    ```
-    labs-make-runbook/src/prompts ❯ ls v1
-    010_user_prompt.txt    010_system_prompt.txt
-    ```
+1.  create an empty directory add some example prompts like the ones [here](./v1).
 
     Each prompt file is a moustache template.  Ordering of prompts is 
-    determined by filename sorting.  Each prompt must be either `user` 
-    or `system`.
+    determined by filename sorting.  Each prompt filename must conform to one of
+    `.*_system_.*\.txt`, `.*_user_.*\.txt`, or `.*_assistant_.*\.txt`, depending 
+    on the role of the message.
 
-2.  The prompt directory must be mounted when the prompts container runs.
+2.  For custom prompts, a project directory can be mounted.
 
     ```sh
     docker run \
@@ -38,6 +34,8 @@ docker run vonwig/prompts "{...}" "jimclark106" "darwin"
       {json facts string} {username} {platform} prompts
 
     ```
+
+    This is useful when developing prompts.
 
 ### Moustache Templates
 
