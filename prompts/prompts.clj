@@ -28,28 +28,23 @@
   (fn [p] (re-matches re (fs/file-name p))))
 
 (defn- selma-render [m f]
-  {:content (selmer.parser/render (slurp f) m)})
+  [{:content (selmer.parser/render (slurp f) m)} f])
 
-(defn- merge-role [s]
-  (fn [m]
-    (merge m {:role s})))
+(def prompt-file-pattern #".*_(.*)_.*.txt")
+
+(defn- merge-role [[m f]]
+  (merge m {:role (let [[_ role] (re-find prompt-file-pattern (fs/file-name f))] role)}))
 
 (defn- -prompts [& args]
   (let [[project-facts user platform dir] args
         m (json/parse-string project-facts keyword)
-        prompt-dir (or dir "v1")
+        prompt-dir (or dir "docker")
         renderer (partial selma-render (facts m user platform))
-        system-prompts (->> (fs/list-dir (fs/file prompt-dir))
-                            (filter (name-matches #".*_system_.*.txt"))
-                            (sort-by fs/path)
-                            (into []))
-        user-prompts (->> (fs/list-dir prompt-dir)
-                          (filter (name-matches #".*_user_.*.txt"))
-                          (sort-by fs/path)
-                          (into []))]
-    (concat
-     (map (comp (merge-role "system") renderer fs/file) system-prompts)
-     (map (comp (merge-role "user") renderer fs/file) user-prompts))))
+        prompts (->> (fs/list-dir prompt-dir)
+                     (filter (name-matches prompt-file-pattern))
+                     (sort-by fs/file-name)
+                     (into []))]
+    (map (comp merge-role renderer fs/file) prompts)))
 
 (comment
   (pprint
