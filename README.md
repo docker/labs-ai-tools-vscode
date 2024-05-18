@@ -35,7 +35,7 @@ Configure the model and endpoint using settings
 ![ollama config screenshot](./screenshots/ollama.png)
 
 ### Changing prompts
-See readme in ./src/prompts
+See [prompts README](./prompts/README.md).
 
 ### Local developement
 
