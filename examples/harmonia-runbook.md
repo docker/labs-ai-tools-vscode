@@ -13,6 +13,9 @@ Note that I don't have to install any nvidia toolkit here!
 
 ```sh
 docker harmonia engine create eye-in-the-sky --type aiml-amd64
+```
+
+```sh
 docker context use eye-in-the-sky
 ```
 
@@ -51,6 +54,10 @@ Is it running?
 docker ps
 ```
 
+```sh
+docker network inspect ollama
+```
+
 ### Stopping the remote container
 
 ```sh
@@ -61,23 +68,13 @@ docker container kill ollama-in-the-sky
 
 ### Pulling an LLM into the remote container
 
-This should work but it didn't.  Rodny looking at this.
-This was really remote client -> remote server so it should work.
+I can now use `ollama ls` to see what LLMs have been pulled.  There should be none.
 
 ```sh
 docker run --rm -e OLLAMA_HOST=ollama-in-the-sky:11434 --network ollama ollama/ollama ls 
 ```
 
-This one does work!  This is
-
-* _client_ running in local engine
-* _server_ running in remote Harmonia engine
-
-```sh
-docker --context default run --rm -e OLLAMA_HOST=host.docker.internal:11434 ollama/ollama ls 
-```
-
-So, let's pull llama3 on to the host machine, making sure that it's on a volume mount so that
+Now, let's pull llama3 on to the host machine, making sure that it's on a volume mount so that
 if the container stops, I don't have to pull it again.
 
 ```sh
@@ -100,14 +97,16 @@ docker exec -it ollama-in-the-sky ls /root/.ollama/models
 
 ### Running
 
-* local ollama client running in my local engine
-* talking to a remote ollama server with llm in harmonia
+We could run the client locally, but let's just run it in the harmonia engine, where the server is.
 
 ```sh
 docker run -it --rm -e OLLAMA_HOST=ollama-in-the-sky:11434 --network ollama ollama/ollama run llama3
 ```
 
 ### Remove the engine
+
+Once we're done, we can clean up the pod but once the whole engine is removed, remember that the pulled
+llm models will be gone too.
 
 ```sh
 docker harmonia engine rm eye-in-the-sky
