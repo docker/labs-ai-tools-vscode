@@ -8,7 +8,7 @@ export const prepareProjectPrompt = (facts: { [key: string]: any }, username: st
     const promptImage = workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
 
     // TODO - bind mount to local dir
-    const result = spawnSync('docker', ['run', promptImage, JSON.stringify(facts), username, JSON.stringify(platform)]);
+    const result = spawnSync('docker', ['run', '--rm', promptImage, JSON.stringify(facts), username, JSON.stringify(platform)]);
 
     if (result.error) {
         throw result.error;
