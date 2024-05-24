@@ -34,11 +34,12 @@ docker context ls
 
 ```sh
 # docker:command=start-ollama
-
+docker network inspect ollama > /dev/null || docker network create ollama
 docker run --name ollama-in-the-sky \
            --rm \
            --gpus all \
            -p 11434:11434 \
+           --network ollama \
            -d \
            --mount type=volume,source=models,target=/root/.ollama/models \
            ollama/ollama
@@ -64,7 +65,7 @@ This should work but it didn't.  Rodny looking at this.
 This was really remote client -> remote server so it should work.
 
 ```sh
-docker run --rm -e OLLAMA_HOST=127.0.0.1 ollama/ollama ls 
+docker run --rm -e OLLAMA_HOST=ollama-in-the-sky:11434 --network ollama ollama/ollama ls 
 ```
 
 This one does work!  This is
@@ -80,7 +81,7 @@ So, let's pull llama3 on to the host machine, making sure that it's on a volume 
 if the container stops, I don't have to pull it again.
 
 ```sh
-docker --context default run --rm -e OLLAMA_HOST=host.docker.internal:11434 ollama/ollama pull llama3
+docker run --rm -e OLLAMA_HOST=ollama-in-the-sky:11434 --network ollama ollama/ollama pull llama3
 ```
 
 ### Debugging 
@@ -103,7 +104,7 @@ docker exec -it ollama-in-the-sky ls /root/.ollama/models
 * talking to a remote ollama server with llm in harmonia
 
 ```sh
-docker --context default run -it --rm -e OLLAMA_HOST=host.docker.internal:11434 ollama/ollama run llama3
+docker run -it --rm -e OLLAMA_HOST=ollama-in-the-sky:11434 --network ollama ollama/ollama run llama3
 ```
 
 ### Remove the engine
