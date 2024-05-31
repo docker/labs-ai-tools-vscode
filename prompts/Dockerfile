@@ -4,6 +4,10 @@ WORKDIR /app
 
 COPY prompts.clj prompts.clj
 COPY docker docker 
+COPY lazy_docker lazy_docker
+COPY git_hooks git_hooks
+COPY harmonia harmonia
+COPY ollama ollama
 
 # Can't be shell form because we need to pass JSON as an arg
 ENTRYPOINT [ "bb", "-f", "prompts.clj" ]

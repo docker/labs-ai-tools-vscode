@@ -4,7 +4,7 @@ import {
 import { TextEncoder } from "util";
 import * as vscode from "vscode";
 import OpenAI from 'openai';
-import { prepareProjectPrompt } from "../utils/preparePrompt";
+import { prepareProjectPrompt, getPromptTypes } from "../utils/preparePrompt";
 import { dockerLSP } from "../extension";
 
 // Must match package.json contributed configuration
@@ -13,9 +13,9 @@ const ENDPOINT_ENUM_MAP = {
     Ollama: "http://localhost:11434/v1"
 };
 
-const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder) => {
+const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
     const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + "/runbook.md"
+        workspaceFolder.uri.fsPath + `/runbook.${promptType}.md`
     );
 
     try {
@@ -68,6 +68,10 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         workspaceFolder = workspaceFolders[option.index];
     }
 
+    const promptTypes = getPromptTypes();
+    
+    const promptOption = await vscode.window.showQuickPick(promptTypes.map(f => ({label: f.title, detail: f.title, index: f.type})), {title: "Select prompt type", ignoreFocusOut: true});
+
     let apiKey = await secrets.get("openAIKey");
 
     const endpoint = vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string;
@@ -83,7 +87,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         }
     }
 
-    const { editor, doc } = (await prepareRunbookFile(workspaceFolder) || {});
+    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption!.index) || {});
 
     if (!editor || !doc) {
         return;
@@ -109,7 +113,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         const facts = await dockerLSP.sendRequest("docker/project-facts");
 
-        progress.report({ increment: 5, message: "Starting LLM..." });
+        progress.report({ increment: 5, message: "Starting LLM ..." });
 
         const openai = new OpenAI({
             apiKey,
@@ -118,7 +122,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         progress.report({ increment: 5, message: "Preparing payload..." });
 
-        const messages = prepareProjectPrompt(facts, authPayload.Username);
+        const messages = prepareProjectPrompt(facts, authPayload.Username, promptOption!.index);
 
         progress.report({ increment: 5, message: "Calling LLM..." });
 

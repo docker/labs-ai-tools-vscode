@@ -111,4 +111,3 @@ llm models will be gone too.
 ```sh
 docker harmonia engine rm eye-in-the-sky
 ```
-

@@ -39,3 +39,8 @@ See [prompts README](./prompts/README.md).
 
 ### Local developement
 
+```sh
+# docker:command=build-and-install
+npm run package
+code --install-extension make-runbook-0.0.6.vsix
+```

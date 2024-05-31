@@ -36,7 +36,7 @@ export const runHotCommand = async () => {
     const quickPicks = Object.entries(combinedCommands).map(
         ([tag, command]) => ({
             label: tag,
-            description: `Run ${command.split("\n").length} command(s)`,
+            description: `${command.split(/\s+/).splice(0,3).join(" ")} ...`,
             detail: command,
         })
     );

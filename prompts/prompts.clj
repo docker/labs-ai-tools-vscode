@@ -36,15 +36,24 @@
   (merge m {:role (let [[_ role] (re-find prompt-file-pattern (fs/file-name f))] role)}))
 
 (defn- -prompts [& args]
-  (let [[project-facts user platform dir] args
-        m (json/parse-string project-facts keyword)
-        prompt-dir (or dir "docker")
-        renderer (partial selma-render (facts m user platform))
-        prompts (->> (fs/list-dir prompt-dir)
-                     (filter (name-matches prompt-file-pattern))
-                     (sort-by fs/file-name)
-                     (into []))]
-    (map (comp merge-role renderer fs/file) prompts)))
+  (cond
+    (= "prompts" (first args))
+    [{:type "docker" :title "using docker in my project"}
+     {:type "lazy_docker" :title "using lazy-docker"}
+     #_{:type "ollama" :title "model quantization with Ollama"}
+     #_{:type "git_hooks" :title "set up my git hooks"}
+     #_{:type "harmonia" :title "using harmonia to access gpus"}]
+    
+    :else
+    (let [[project-facts user platform dir] args
+          m (json/parse-string project-facts keyword)
+          prompt-dir (or dir "docker")
+          renderer (partial selma-render (facts m user platform))
+          prompts (->> (fs/list-dir prompt-dir)
+                       (filter (name-matches prompt-file-pattern))
+                       (sort-by fs/file-name)
+                       (into []))]
+      (map (comp merge-role renderer fs/file) prompts))))
 
 (comment
   (pprint

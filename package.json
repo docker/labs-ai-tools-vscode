@@ -67,7 +67,7 @@
       },
       {
         "command": "docker.make-runbook.run",
-        "title": "Run workspace commands in terminal"
+        "title": "Runbook Commands"
       },
       {
         "command": "docker.make-runbook.set-openai-api-key",

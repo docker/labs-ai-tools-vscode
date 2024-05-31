@@ -5,13 +5,23 @@
 docker build -t vonwig/prompts -f Dockerfile .
 ```
 
+```sh
+#docker:command=push
+docker push vonwig/prompts
+```
+
 ## Running
 
 To run this project, use Docker run command:
 
 ```sh
 #docker:command=run
-docker run vonwig/prompts "{...}" "jimclark106" "darwin"
+docker run vonwig/prompts "{}" "jimclark106" "darwin" "docker"
+```
+
+```sh
+#docker:command=run-get-prompts
+docker run vonwig/prompts prompts
 ```
 
 * the first argument is the serialized `application/json` map of projects facts.
