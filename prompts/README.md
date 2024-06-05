@@ -16,7 +16,7 @@ To run this project, use the following run command:
 
 ```sh
 #docker:command=run
-docker run -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts /Users/slim/docker/genai-stack jimclark106 darwin docker 
+docker run -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts /Users/slim/docker/labs-make-runbook jimclark106 darwin npm 
 ```
 
 The four arguments are `project root dir`, `docker username`, `platform`, and a top-level prompt folder.

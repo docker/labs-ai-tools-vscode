@@ -7,31 +7,29 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :as string]
    [markdown.core :as markdown]
-   [selmer.parser :as selmer.parser]))
+   [pogonos.core :as stache]
+   [medley.core :as medley]))
 
 (defn- facts [project-facts user platform]
-  {:platform platform
-   :username user
-   :dockerfiles (->> project-facts
-                     :project/dockerfiles
-                     (map :path)
-                     (string/join ", "))
-   :composefiles (->> project-facts
-                      :project/composefiles
-                      (map :path)
-                      (string/join ", "))
-   :languages (->> project-facts
-                   :github/linguist
-                   keys
-                   (map name)
-                   (string/join ", "))
-   :project-facts project-facts})
+  (medley/deep-merge
+    {:platform platform
+     :username user
+     :project {:files (-> project-facts :project/files)
+               :dockerfiles (-> project-facts :project/dockerfiles)
+               :composefiles (-> project-facts :project/composefiles)
+               :languages (-> project-facts :github/lingust)}
+     :languages (->> project-facts
+                     :github/linguist
+                     keys
+                     (map name)
+                     (string/join ", "))}
+    project-facts))
 
 (defn- name-matches [re]
   (fn [p] (re-matches re (fs/file-name p))))
 
 (defn- selma-render [m f]
-  [{:content (selmer.parser/render (slurp f) m)} f])
+  [{:content (stache/render-string (slurp f) m)} f])
 
 (def prompt-file-pattern #".*_(.*)_.*.md")
 
@@ -51,18 +49,22 @@
               "--vs-machine-id" "none"
               "--workspace" "/docker"]}])
 
+(defn all-facts [project-root dir]
+  (reduce (partial fact-reducer project-root) {} (collect-extractors dir)))
+
 (defn- -prompts [& args]
   (cond
     (= "prompts" (first args))
     [{:type "docker" :title "using docker in my project"}
      {:type "lazy_docker" :title "using lazy-docker"}
+     {:type "npm" :title "using npm"}
      #_{:type "ollama" :title "model quantization with Ollama"}
      #_{:type "git_hooks" :title "set up my git hooks"}
      #_{:type "harmonia" :title "using harmonia to access gpus"}]
 
     :else
     (let [[project-root user platform dir] args
-          m (reduce (partial fact-reducer project-root) {} (collect-extractors dir))
+          m (all-facts project-root dir)
           prompt-dir (or dir "docker")
           renderer (partial selma-render (facts m user platform))
           prompts (->> (fs/list-dir prompt-dir)
@@ -86,3 +88,11 @@
 (defn -main [& args]
   (apply prompts args))
 
+(comment
+  (all-facts "/Users/slim/docker/labs-make-runbook/" "npm")
+  (->> (-prompts "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm")
+       (map :content)
+       (map println))
+  (->> (-prompts "/Users/slim/docker/genai-stack/" "jimclark106" "darwin" "docker")
+       (map :content)
+       (map println)))
