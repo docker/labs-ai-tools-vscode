@@ -86,11 +86,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	}) => {
 		const blocks = args.blocks;
 
-		const workspace = vscode.workspace.getWorkspaceFolder(vscode.Uri.parse(args.uri));
+		const runbookURI = vscode.Uri.parse(args.uri);
 
-		const id = `docker-run-${workspace?.uri.fsPath}`;
-
-		workspaceCommands[id] = blocks;
+		workspaceCommands[runbookURI.fsPath] = blocks;
 	});
 
 	dockerLSP.onNotification("$terminal/run", async (args: { content: string }) => {

@@ -1,52 +1,41 @@
 import * as vscode from "vscode";
 import { workspaceCommands } from "../extension";
 
+const groupCommands = (blocks: (typeof workspaceCommands)[string]) => blocks.reduce((acc, { command, script }) => {
+    if (!acc[command]) {
+        acc[command] = '';
+    }
+    acc[command] += script;
+    return acc;
+}, {} as Record<string, string>);
+
 export const runHotCommand = async () => {
-    if (!vscode.workspace.workspaceFolders) {
-        return vscode.window.showErrorMessage("No workspace open.");
+    const quickPicks = [];
+    if (Object.keys(workspaceCommands).length === 0) {
+        return vscode.window.showErrorMessage('No runbooks found in workspace');
     }
+    for (const [runbookFSPath, blocks] of Object.entries(workspaceCommands)) {
+        quickPicks.push({
+            label: runbookFSPath,
+            description: ``,
+            detail: ``,
+            kind: vscode.QuickPickItemKind.Separator,
+        });
 
-    let workspace = vscode.workspace.workspaceFolders[0];
+        const groupedBlocks = groupCommands(blocks);
 
-    if (vscode.window.activeTextEditor) {
-        workspace = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri) || workspace;
-    }
-
-    const commands: { command: string; script: string }[] =
-        workspaceCommands[`docker-run-${workspace.uri.fsPath}`] || [];
-
-    if (!commands || commands.length === 0) {
-        vscode.window.showErrorMessage("No commands bound to workspace");
-        return;
-    }
-
-    // Combines commands with mathcing names
-    const combinedCommands = commands.reduce(
-        (acc: { [key: string]: string }, { command, script }) => {
-            if (acc[command]) {
-                acc[command] += `\n${script}`;
-            } else {
-                acc[command] = script;
-            }
-            return acc;
-        },
-        {}
-    ) as { [key: string]: string };
-
-    const quickPicks = Object.entries(combinedCommands).map(
-        ([tag, command]) => ({
-            label: tag,
-            description: `${command.split(/\s+/).splice(0,3).join(" ")} ...`,
-            detail: command,
-        })
-    );
+        quickPicks.push(...Object.entries(groupedBlocks).map(([command, script]) => ({
+            label: command,
+            detail: script,
+        })));
+    };
 
     void vscode.window.showQuickPick(quickPicks).then((tag) => {
         if (!tag) {
             return;
         }
 
-        const terminalIdentifier = vscode.workspace.workspaceFolders!.length > 1 ? `[${workspace.name}]-${tag.label}` : tag.label;
+        const terminalIdentifier = tag.label;
 
         const existingTerminal = vscode.window.terminals.find(
             terminal => terminal.name === terminalIdentifier
