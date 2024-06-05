@@ -1,8 +1,8 @@
 ## Building
 
 ```sh
-#docker:command=build
-docker build -t vonwig/prompts -f Dockerfile .
+#docker:command=builds
+docker build -t vonwig/prompts -f prompts/Dockerfile prompts
 ```
 
 ```sh
@@ -16,7 +16,7 @@ To run this project, use the following run command:
 
 ```sh
 #docker:command=run
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts $PWD my_docker_username darwin docker
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts $PWD my_docker_username darwin npm
 ```
 
 The four arguments are `project root dir`, `docker username`, `platform`, and a top-level prompt folder.
