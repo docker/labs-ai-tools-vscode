@@ -1,7 +1,7 @@
 FROM alpine:3.20
 
-# Give me bash
-RUN apk add --no-cache bash
+# Get bash, jq, fdfind
+RUN apk add --no-cache bash jq fd
 
 VOLUME /project
 

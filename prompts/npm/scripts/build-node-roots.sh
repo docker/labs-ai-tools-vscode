@@ -1,7 +1,62 @@
 #!/bin/bash
-# Echo JSON with project.node_roots[]
 
-cat payload.json
+function get_node_version() {
+    local NODE_VERSION=18
+    local NODE_VERSION_FILE=null
+    local NODE_VERSION_FILE_PATH=null
+    local NODE_VERSION_FILE_NAME=null
 
-# Use JQ to get scripts
-# jq -r '.project.node_roots[]' payload.json
+    if [ -f ".node-version" ]; then
+        NODE_VERSION_FILE=".node-version"
+    elif [ -f ".nvmrc" ]; then
+        NODE_VERSION_FILE=".nvmrc"
+    elif [ -f "package.json" ]; then
+        NODE_VERSION_FILE="package.json"
+    fi
+
+    if [ $NODE_VERSION_FILE == "package.json" ]; then
+        NODE_VERSION=$(jq -r '.engines.node' "$NODE_VERSION_FILE")
+    else
+        NODE_VERSION=$(cat $NODE_VERSION_FILE)
+    fi
+
+    NODE_VERSION_FILE_PATH=$(pwd)
+    NODE_VERSION_FILE_NAME=$NODE_VERSION_FILE
+
+    # Strip non-numeric and non-dot characters
+    NODE_VERSION=$(echo $NODE_VERSION | tr -dc '0-9.')
+
+    # Echo json payload
+    echo "{\"node_version\": \"$NODE_VERSION\", \"node_version_file\": \"$NODE_VERSION_FILE_NAME\", \"node_version_file_path\": \"$NODE_VERSION_FILE_PATH\"}"
+}
+
+
+PROJECT_DIR="/project"
+
+cd $PROJECT_DIR
+
+# If package.json at root level
+if [ -f package.json ]; then
+    NODE_ROOTS="$PROJECT_DIR/package.json"
+else
+    NODE_ROOTS=$(fd -d 3 package.json) # newline separated
+fi
+
+PAYLOAD_NODE_ROOTS=()
+
+# CD into each node root
+for NODE_ROOT in $NODE_ROOTS; do
+    root_dirname=$(dirname $NODE_ROOT)
+    cd $root_dirname
+    # Version is json payload
+    node_root_version=$(get_node_version | tr -d '\n' | tr -d '\r')
+
+    node_root_path=$root_dirname
+
+    node_root_scripts=$(jq -r '.scripts' package.json)
+    # Append json payload
+    PAYLOAD_NODE_ROOTS+=("{\"node_root_path\": \"$node_root_path\", \"version\": \"$node_root_version\", \"node_root_scripts\": $node_root_scripts}")
+done
+
+# Echo project.node_roots json payload
+echo "{\"project\": {\"node_roots\": [${PAYLOAD_NODE_ROOTS[@]}]}}"
