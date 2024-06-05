@@ -5,3 +5,4 @@ node_modules
 *.vsix
 /.clj-kondo/
 /.lsp/
+/prompts/prompts.jar

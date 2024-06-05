@@ -109,10 +109,6 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
             "Secret": string
         };
 
-        progress.report({ increment: 15, message: "Analyzing project" });
-
-        const facts = await dockerLSP.sendRequest("docker/project-facts");
-
         progress.report({ increment: 5, message: "Starting LLM ..." });
 
         const openai = new OpenAI({
@@ -122,7 +118,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         progress.report({ increment: 5, message: "Preparing payload..." });
 
-        const messages = prepareProjectPrompt(facts, authPayload.Username, promptOption!.index);
+        const messages = prepareProjectPrompt(workspaceFolder, authPayload.Username, promptOption!.index);
 
         progress.report({ increment: 5, message: "Calling LLM..." });
 
