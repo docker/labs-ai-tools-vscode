@@ -17,23 +17,16 @@ Run Package Manager:
 # Run:
 Analyze package.json for scripts.
 
+--- Project ---
 
 {{#project.node_roots}}
-  The project has a node root package.json at {{path}} with the contents {{content}}.
+  The project has a node root package.json at {{path}} and uses node version {{version}}.
   Because there is already a root, the project does not need to be converted to npm.
 {{/project.node_roots}}
 {{^project.node_roots}}
   The project does not have a node root, so the user should run `npm init`
 {{/project.node_roots}}
 
-
-
-{{#project.version_artifacts}}
-  The project has a version declaration file {{path}} with the contents {{content}}
-{{/project.version_artifacts}}
-{{^project.version_artifacts}}
-  The project does not have any version artifacts, so default to latest node LTS
-{{/project.version_artifacts}}
 
 The user has the following top level project files:
 

@@ -16,7 +16,7 @@ To run this project, use the following run command:
 
 ```sh
 #docker:command=run
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts /Users/slim/docker/labs-make-runbook jimclark106 darwin npm 
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts $PWD my_docker_username darwin docker
 ```
 
 The four arguments are `project root dir`, `docker username`, `platform`, and a top-level prompt folder.

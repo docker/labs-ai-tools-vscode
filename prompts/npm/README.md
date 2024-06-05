@@ -24,7 +24,7 @@ It relies on an image to extract some additional facts about the project
 
 ```sh
 #docker:command=build-npm-extractor
-docker build -t vonwig/node-extractor -f ./npm/Dockerfile ./npm
+docker build -t vonwig/node-extractor -f ./prompts/npm/Dockerfile ./prompts/npm
 ```
 
 ## Running the extraction image
