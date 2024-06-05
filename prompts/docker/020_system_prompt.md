@@ -32,29 +32,25 @@ The user is logged in to Docker Hub as {{username}}
 
 The project has the following Dockerfiles:
 
-{% for f in project-facts.project/dockerfiles %}
+{{#project.dockerfiles}}
+Dockerfile at {{path}} contains:
+{{content}}
+{{/project.dockerfiles}}
 
-Dockerfile at {{f.path}} contains:
-{{f.content}}
 
-{% endfor %}
 
-{% if project-facts.project/composefiles|not-empty %}
-
+{{#project.composefiles}}
 The project has the following Docker Compose files:
 
-{% for f in project-facts.project/composefiles %}
+Compose file at {{path}} contains:
+{{content}}
+{{/project.composefiles}}
 
-Compose file at {{f.path}} contains:
-{{f.content}}
-
-{% endfor %}
-
-{% else %}
+{{^project.composefiles}}
 
 I am not using Docker Compose in this project.
 
-{% endif %}
+{{/project.composefiles}}
 
 My project uses the following languages:
 
