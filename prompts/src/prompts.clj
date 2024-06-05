@@ -38,16 +38,21 @@
 
 (defn fact-reducer [dir m container-definition]
   (try
-    (docker/extract-facts container-definition dir)
+    (medley/deep-merge
+      m
+      (docker/extract-facts container-definition dir))
     (catch Throwable e
       m)))
 
 (defn collect-extractors [dir]
-  [{:image "docker/lsp:latest"
-    :entrypoint "/app/result/bin/docker-lsp"
-    :command ["project-facts"
-              "--vs-machine-id" "none"
-              "--workspace" "/docker"]}])
+  (let [extractors (-> (markdown/parse-metadata (io/file dir "README.md")) first :extractors)]
+    (if (seq extractors)
+      extractors
+      [{:image "docker/lsp:latest"
+        :entrypoint "/app/result/bin/docker-lsp"
+        :command ["project-facts"
+                  "--vs-machine-id" "none"
+                  "--workspace" "/docker"]}])))
 
 (defn all-facts [project-root dir]
   (reduce (partial fact-reducer project-root) {} (collect-extractors dir)))
@@ -82,13 +87,14 @@
    (json/generate-string (apply -prompts args))))
 
 (comment
-  (markdown/parse-metadata (io/file "crap.md"))
+  (-> (markdown/parse-metadata (io/file "docker/README.md")) first :extractors first keys)
   (markdown/md-to-meta (slurp (io/file "crap.md"))))
 
 (defn -main [& args]
   (apply prompts args))
 
 (comment
+  (collect-extractors "npm")
   (all-facts "/Users/slim/docker/labs-make-runbook/" "npm")
   (->> (-prompts "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm")
        (map :content)

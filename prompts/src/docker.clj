@@ -7,12 +7,13 @@
 ;; check for 201
 (defn create-container [{:keys [image entrypoint command host-dir]}]
   (let [payload (json/generate-string
-                 {:Image image
-                  :Tty true
-                  :Entrypoint entrypoint
-                  :HostConfig {:Binds [(format "%s:/project:ro" host-dir)
-                                       "docker-lsp:/docker"]}
-                  :Cmd command})]
+                  (merge
+                    {:Image image
+                     :Tty true
+                     :HostConfig {:Binds [(format "%s:/project:ro" host-dir)
+                                          "docker-lsp:/docker"]}}
+                    (when entrypoint {:Entrypoint entrypoint})
+                    (when command {:Cmd command})))]
     (curl/post
      "http://localhost/containers/create"
      {:raw-args ["--unix-socket" "/var/run/docker.sock"]
@@ -73,5 +74,11 @@
 
 (comment
   (pprint (json/parse-string (extract-facts sample "/Users/slim/docker/genai-stack") keyword))
+  (pprint 
+    (json/parse-string 
+      (extract-facts 
+        {:image "vonwig/node-extractor:latest"} 
+        "/Users/slim/docker/labs-make-runbook")
+      keyword))
   )
 

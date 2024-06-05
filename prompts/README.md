@@ -16,7 +16,7 @@ To run this project, use the following run command:
 
 ```sh
 #docker:command=run
-docker run -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts /Users/slim/docker/labs-make-runbook jimclark106 darwin npm 
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts /Users/slim/docker/labs-make-runbook jimclark106 darwin npm 
 ```
 
 The four arguments are `project root dir`, `docker username`, `platform`, and a top-level prompt folder.
@@ -59,9 +59,9 @@ prompts are:
 
 * `{{platform}}` - the platform of the current development environment.
 * `{{username}}` - the DockerHub username (and default namespace for image pushes)
-* `{{dockerfiles}}` - the relative paths to local DockerFiles
 * `{{languages}}` - names of languages discovered in the project.
-* `{{composefiles}}` - the relative paths to local Docker Compose files.
+* `{{project.dockerfiles}}` - the relative paths to local DockerFiles
+* `{{project.composefiles}}` - the relative paths to local Docker Compose files.
 
 The entire `project-facts` map is also available using dot-syntax 
 forms like `{{project-facts.project-root-uri}}`.  All moustache template 
