@@ -39,6 +39,7 @@ cd $PROJECT_DIR
 if [ -f package.json ]; then
     NODE_ROOTS="$PROJECT_DIR/package.json"
 else
+    #TODO if a package.json found contains workspaces, ignore those roots
     NODE_ROOTS=$(fd -d 3 package.json) # newline separated
 fi
 
@@ -47,6 +48,7 @@ PAYLOAD_NODE_ROOTS=()
 # CD into each node root
 for NODE_ROOT in $NODE_ROOTS; do
     root_dirname=$(dirname $NODE_ROOT)
+    root_dirname="$PROJECT_DIR/$root_dirname"
     cd $root_dirname
     # Version is json payload
     node_root_version=$(get_node_version | tr -d '\n' | tr -d '\r')
@@ -55,8 +57,11 @@ for NODE_ROOT in $NODE_ROOTS; do
 
     node_root_scripts=$(jq -r '.scripts' package.json)
     # Append json payload
-    PAYLOAD_NODE_ROOTS+=("{\"node_root_path\": \"$node_root_path\", \"version\": \"$node_root_version\", \"node_root_scripts\": $node_root_scripts}")
+    PAYLOAD_NODE_ROOTS+=("{\"node_root_path\": \"$node_root_path\", \"version\": $node_root_version, \"node_root_scripts\": $node_root_scripts},")
 done
 
-# Echo project.node_roots json payload
+# Remove trailing comma from last element
+PAYLOAD_NODE_ROOTS[-1]=${PAYLOAD_NODE_ROOTS[-1]%?}
+
+# Echo project.node_roots json payload, comma separated
 echo "{\"project\": {\"node_roots\": [${PAYLOAD_NODE_ROOTS[@]}]}}"
