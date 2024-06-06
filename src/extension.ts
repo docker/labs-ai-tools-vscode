@@ -89,7 +89,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(runBoundCommands);
 
 	void vscode.window.showInformationMessage(vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') as string);
-	if ((vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') as string).includes('api.openai.com')) {
+	if (vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') === 'OpenAI') {
 		void verifyHasOpenAIKey(context.secrets);
 	}
 
