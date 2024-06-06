@@ -20,6 +20,7 @@ export const runHotCommand = async () => {
             description: ``,
             detail: ``,
             kind: vscode.QuickPickItemKind.Separator,
+            workspace: runbookFSPath,
         });
 
         const groupedBlocks = groupCommands(blocks);
@@ -27,6 +28,7 @@ export const runHotCommand = async () => {
         quickPicks.push(...Object.entries(groupedBlocks).map(([command, script]) => ({
             label: command,
             detail: script,
+            workspace: runbookFSPath,
         })));
     };
 
@@ -35,7 +37,7 @@ export const runHotCommand = async () => {
             return;
         }
 
-        const terminalIdentifier = tag.label;
+        const terminalIdentifier = `${tag.label}-${tag.workspace}`;
 
         const existingTerminal = vscode.window.terminals.find(
             terminal => terminal.name === terminalIdentifier

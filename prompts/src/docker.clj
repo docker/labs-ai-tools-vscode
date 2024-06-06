@@ -77,7 +77,7 @@
   (pprint 
     (json/parse-string 
       (extract-facts 
-        {:image "vonwig/node-extractor:latest"} 
+        {:image "vonwig/extractor-node:latest"} 
         "/Users/slim/docker/labs-make-runbook")
       keyword))
   )

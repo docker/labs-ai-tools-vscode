@@ -1,13 +1,7 @@
 ---
 extractors:
-  - image: docker/lsp:latest
-    entrypoint: /app/result/bin/docker-lsp
-    command:
-      - project-facts
-      - --vs-machine-id
-      - none
-      - --workspace
-      - /docker
+  - image: vonwig/readme-extractor:latest
+    entrypoint: /project
   - image: vonwig/extractor-node:latest
 ---
 
@@ -24,7 +18,7 @@ It relies on an image to extract some additional facts about the project
 
 ```sh
 #docker:command=build-npm-extractor
-docker build -t vonwig/extractor-node -f ./prompts/npm/Dockerfile ./prompts/npm
+docker build -t vonwig/extractor-node -f ./npm/Dockerfile ./npm
 ```
 
 ## Running the extraction image
