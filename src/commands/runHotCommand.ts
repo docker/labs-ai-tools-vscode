@@ -36,14 +36,14 @@ export const runHotCommand = async () => {
     const quickPicks = Object.entries(combinedCommands).map(
         ([tag, command]) => ({
             label: tag,
-            description: `${command.split(/\s+/).splice(0,3).join(" ")} ...`,
+            description: `${command.split(/\s+/).splice(0, 3).join(" ")} ...`,
             detail: command,
         })
     );
 
     void vscode.window.showQuickPick(quickPicks).then((tag) => {
         if (!tag) {
-            return;
+            return null;
         }
 
         const terminalIdentifier = vscode.workspace.workspaceFolders!.length > 1 ? `[${workspace.name}]-${tag.label}` : tag.label;

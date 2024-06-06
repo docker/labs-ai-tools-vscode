@@ -20,6 +20,26 @@ export let dockerLSP: any;
 
 const MAX_POLL = 10;
 
+export const verifyHasOpenAIKey = async (secrets: vscode.SecretStorage, didRunAutomatically = false) => {
+	const openAIKey = await secrets.get('openAIKey');
+	if (!openAIKey) {
+		await vscode.window.showErrorMessage('Model provider set to OpenAI, but no OpenAI API key found in secrets.', {
+			modal: didRunAutomatically
+		}, 'Set Key', 'Use Ollama',).then(
+			async (res) => {
+				if (res === 'Set Key') {
+					await setOpenAIKey(secrets, true);
+				}
+				else if (res === 'Use Ollama') {
+					await vscode.workspace.getConfiguration('docker.make-runbook').update('openai-base', 'Ollama');
+				}
+				else {
+					return false;
+				}
+			});
+	}
+};
+
 const pollLSPOrThrow = async (api: { getNativeClient: Function }) => new Promise((resolve, reject) => {
 	let polls = 0;
 	setInterval(() => {
@@ -59,16 +79,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(setOpenAIKeyCommand);
 
-	const openAIKey = await context.secrets.get('openAIKey');
-
-	if (!openAIKey) {
-		await vscode.window.showErrorMessage('OpenAI key must be set to use this extension.', 'Set Key').then(
-			async (res) => {
-				if (res === 'Set Key') {
-					await setOpenAIKey(context.secrets, true);
-				}
-			});
-	}
 
 	let makeRunbook = vscode.commands.registerCommand('docker.make-runbook.generate', () => generateRunbook(context.secrets));
 
@@ -77,6 +87,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	let runBoundCommands = vscode.commands.registerCommand('docker.make-runbook.run', runHotCommand);
 
 	context.subscriptions.push(runBoundCommands);
+
+	void vscode.window.showInformationMessage(vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') as string);
+	if ((vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') as string).includes('api.openai.com')) {
+		void verifyHasOpenAIKey(context.secrets);
+	}
 
 	dockerLSP.onNotification("$bind/register", async (args: {
 		uri: string, blocks: {

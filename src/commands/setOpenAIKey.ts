@@ -3,6 +3,8 @@ import { SecretStorage, window } from "vscode";
 const setKey = async (secrets: SecretStorage) => {
     const key = await window.showInputBox({
         title: "OpenAI API Key",
+        password: true,
+        prompt: "Enter your OpenAI API key",
     });
     if (!key) {
         // return;
