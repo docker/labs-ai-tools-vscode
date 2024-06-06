@@ -11,7 +11,7 @@ extractors:
   - image: vonwig/extractor-node:latest
 ---
 
-## Description
+# Description
 
 The prompts for docker rely only on the classic lsp project extraction function.
 
@@ -24,7 +24,7 @@ It relies on an image to extract some additional facts about the project
 
 ```sh
 #docker:command=build-npm-extractor
-docker build -t vonwig/extractor-node -f ./prompts/npm/Dockerfile ./prompts/npm
+docker build -t vonwig/extractor-node -f ./npm/Dockerfile ./npm
 ```
 
 ## Running the extraction image
@@ -33,4 +33,3 @@ docker build -t vonwig/extractor-node -f ./prompts/npm/Dockerfile ./prompts/npm
 #docker:command=run-npm-extractor
 docker run --rm -v $PWD:/project:ro vonwig/extractor-node
 ```
-
