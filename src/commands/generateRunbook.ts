@@ -5,7 +5,7 @@ import { TextEncoder } from "util";
 import * as vscode from "vscode";
 import OpenAI from 'openai';
 import { prepareProjectPrompt, getPromptTypes } from "../utils/preparePrompt";
-import { dockerLSP, verifyHasOpenAIKey } from "../extension";
+import { verifyHasOpenAIKey } from "../extension";
 
 // Must match package.json contributed configuration
 const ENDPOINT_ENUM_MAP = {
