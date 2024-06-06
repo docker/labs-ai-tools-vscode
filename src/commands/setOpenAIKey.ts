@@ -5,6 +5,7 @@ const setKey = async (secrets: SecretStorage) => {
         title: "OpenAI API Key",
         password: true,
         prompt: "Enter your OpenAI API key",
+        ignoreFocusOut: true,
     });
     if (!key) {
         // return;
@@ -21,7 +22,9 @@ export const setOpenAIKey = async (secrets: SecretStorage, skipQuickPick: boolea
         return;
     }
 
-    const option = await window.showQuickPick([{ label: "Set key" }, { label: "Delete key" }]);
+    const option = await window.showQuickPick([{ label: "Set key" }, { label: "Delete key" }], {
+        ignoreFocusOut: true,
+    });
     if (!option) {
         return;
     }
