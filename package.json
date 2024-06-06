@@ -15,12 +15,10 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:[Dd]ocker*"
+    "workspaceContains:[Dd]ocker*",
+    "workspaceContains:*.md"
   ],
   "main": "./out/extension.js",
-  "extensionDependencies": [
-    "ms-azuretools.vscode-docker"
-  ],
   "contributes": {
     "configuration": {
       "title": "Docker Make Runbook",
@@ -97,6 +95,7 @@
     "vsce": "^2.15.0"
   },
   "dependencies": {
-    "openai": "^4.38.5"
+    "openai": "^4.38.5",
+    "vscode-languageclient": "^9.0.1"
   }
 }
