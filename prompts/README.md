@@ -1,7 +1,7 @@
 ## Building
 
 ```sh
-#docker:command=build
+#docker:command=builds
 docker build -t vonwig/prompts -f Dockerfile .
 ```
 
@@ -16,7 +16,7 @@ To run this project, use the following run command:
 
 ```sh
 #docker:command=run
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts /Users/slim/docker/labs-make-runbook jimclark106 darwin npm 
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts $PWD my_docker_username darwin npm
 ```
 
 The four arguments are `project root dir`, `docker username`, `platform`, and a top-level prompt folder.
@@ -32,14 +32,14 @@ docker run vonwig/prompts prompts
 
 ## Custom prompts
 
-1.  create an empty directory add some example prompts like the ones [here](./v1).
+1. create an empty directory add some example prompts like the ones [here](./v1).
 
-    Each prompt file is a moustache template.  Ordering of prompts is 
+    Each prompt file is a moustache template.  Ordering of prompts is
     determined by filename sorting.  Each prompt filename must conform to one of
-    `.*_system_.*\.txt`, `.*_user_.*\.txt`, or `.*_assistant_.*\.txt`, depending 
+    `.*_system_.*\.txt`, `.*_user_.*\.txt`, or `.*_assistant_.*\.txt`, depending
     on the role of the message.
 
-2.  For custom prompts, a project directory can be mounted.
+2. For custom prompts, a project directory can be mounted.
 
     ```sh
     docker run \
@@ -54,7 +54,7 @@ docker run vonwig/prompts prompts
 ### Moustache Templates
 
 The prompt templates can contain expressions like {{dockerfiles}} to add information
-extracted from the current project.  Examples of facts that can be added to the 
+extracted from the current project.  Examples of facts that can be added to the
 prompts are:
 
 * `{{platform}}` - the platform of the current development environment.
@@ -63,7 +63,6 @@ prompts are:
 * `{{project.dockerfiles}}` - the relative paths to local DockerFiles
 * `{{project.composefiles}}` - the relative paths to local Docker Compose files.
 
-The entire `project-facts` map is also available using dot-syntax 
-forms like `{{project-facts.project-root-uri}}`.  All moustache template 
+The entire `project-facts` map is also available using dot-syntax
+forms like `{{project-facts.project-root-uri}}`.  All moustache template
 expressions documented [here](https://github.com/yogthos/Selmer) are supported.
-

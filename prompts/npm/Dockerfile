@@ -1,15 +1,17 @@
-FROM ubuntu:20.04
+FROM alpine:3.20
 
-WORKDIR /app
+# Get bash, jq, fdfind
+RUN apk add --no-cache bash jq fd
 
-RUN <<EOF
-cat > /app/run.sh <<'EOF2'
-#!/bin/bash
+VOLUME /project
 
-echo '{"project": {"node_roots": [{"path": "package.json", "content": "some stuff"}]}}'
-EOF2
-chmod 755 /app/run.sh
-EOF
+WORKDIR /
 
+COPY ./scripts/build-node-roots.sh /build-node-roots.sh
+
+# MAke the thing executable
+RUN chmod +x build-node-roots.sh
+
+COPY ./scripts/payload.json /payload.json
 # when the container is running the project is mounted at /project read-only
-ENTRYPOINT ["/app/run.sh"]
+ENTRYPOINT ["/build-node-roots.sh"]

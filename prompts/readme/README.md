@@ -1,17 +1,11 @@
 ---
 extractors:
-  - image: docker/lsp:latest
-    entrypoint: /app/result/bin/docker-lsp
-    command:
-      - project-facts
-      - --vs-machine-id
-      - none
-      - --workspace
-      - /docker
+  - image: vonwig/readme-extractor:latest
+    entrypoint: /project
   - image: vonwig/extractor-node:latest
 ---
 
-# Description
+## Description
 
 The prompts for docker rely only on the classic lsp project extraction function.
 
@@ -33,3 +27,4 @@ docker build -t vonwig/extractor-node -f ./npm/Dockerfile ./npm
 #docker:command=run-npm-extractor
 docker run --rm -v $PWD:/project:ro vonwig/extractor-node
 ```
+

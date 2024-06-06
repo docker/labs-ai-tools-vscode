@@ -1,6 +1,6 @@
 FROM babashka/babashka:latest@sha256:4bc4beea38406782845ae8effaa9bd2f45345d46a4290ea4c96037970a0ca430 AS bb
 
-FROM eclipse-temurin:latest@sha256:2e387a63a9086232a53fb668f78bcda1f233118f234326fcb88b0bb2a968ec39 AS deps
+FROM eclipse-temurin:latest AS deps
 
 WORKDIR /app
 
