@@ -1,11 +1,11 @@
 import { spawnSync } from "child_process";
 import * as vscode from "vscode";
 
-type PromptTypes = [ { title: string, type: string } ];
+type PromptTypes = [{ title: string, type: string }];
 
-export const getPromptTypes = function(): PromptTypes {
+export const getPromptTypes = function (): PromptTypes {
     const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
-    const result = spawnSync('docker', ['run', '--rm', promptImage, "prompts"]);
+    const result = spawnSync('docker', ['run', '--rm', "--pull=always", promptImage, "prompts"]);
     return JSON.parse(result.stdout.toString());
 };
 

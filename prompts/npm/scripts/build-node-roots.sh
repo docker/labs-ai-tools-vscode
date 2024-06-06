@@ -21,7 +21,7 @@ function get_node_version() {
         NODE_VERSION=$(cat $NODE_VERSION_FILE)
     fi
 
-    NODE_VERSION_FILE_PATH=$(pwd)
+    NODE_VERSION_FILE_PATH="$(pwd)/$NODE_VERSION_FILE"
     NODE_VERSION_FILE_NAME=$NODE_VERSION_FILE
 
     if [ $NODE_VERSION == null ]; then
@@ -44,18 +44,24 @@ cd $PROJECT_DIR
 
 # If package.json at root level
 if [ -f package.json ]; then
-    NODE_ROOTS="$PROJECT_DIR/package.json"
+    NODE_ROOTS="package.json"
 else
     #TODO if a package.json found contains workspaces, ignore those roots
     NODE_ROOTS=$(fd -d 3 package.json) # newline separated
+fi
+
+# If no node roots found
+if [ -z "$NODE_ROOTS" ]; then
+    echo "{\"project\": {\"node_roots\": []}}"
+    exit 0
 fi
 
 PAYLOAD_NODE_ROOTS=()
 
 # CD into each node root
 for NODE_ROOT in $NODE_ROOTS; do
+    NODE_ROOT="$PROJECT_DIR/$NODE_ROOT"
     root_dirname=$(dirname $NODE_ROOT)
-    root_dirname="$PROJECT_DIR/$root_dirname"
     cd $root_dirname
     # Version is json payload
     node_root_version=$(get_node_version | tr -d '\n' | tr -d '\r')
