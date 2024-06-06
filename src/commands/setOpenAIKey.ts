@@ -12,7 +12,7 @@ const setKey = async (secrets: SecretStorage) => {
         return;
     }
     await secrets.store('openAIKey', key);
-    window.showInformationMessage(`Secret set: ${(await secrets.get('openAIKey'))?.slice(0, 5)}...`);
+    void window.showInformationMessage("Secret set.");
 };
 
 export const setOpenAIKey = async (secrets: SecretStorage, skipQuickPick: boolean = false) => {
