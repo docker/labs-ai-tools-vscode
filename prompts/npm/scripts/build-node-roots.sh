@@ -1,7 +1,8 @@
 #!/bin/bash
 
 function get_node_version() {
-    local NODE_VERSION=18
+    local DEFAULT_NODE_VERSION=20
+    local NODE_VERSION=DEFAULT_NODE_VERSION
     local NODE_VERSION_FILE=null
     local NODE_VERSION_FILE_PATH=null
     local NODE_VERSION_FILE_NAME=null
@@ -22,6 +23,12 @@ function get_node_version() {
 
     NODE_VERSION_FILE_PATH=$(pwd)
     NODE_VERSION_FILE_NAME=$NODE_VERSION_FILE
+
+    if [ $NODE_VERSION == null ]; then
+        NODE_VERSION=DEFAULT_NODE_VERSION
+        NODE_VERSION_FILE=null
+        NODE_VERSION_FILE_PATH=null
+    fi
 
     # Strip non-numeric and non-dot characters
     NODE_VERSION=$(echo $NODE_VERSION | tr -dc '0-9.')
