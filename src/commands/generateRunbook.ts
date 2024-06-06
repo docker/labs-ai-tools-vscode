@@ -5,7 +5,7 @@ import { TextEncoder } from "util";
 import * as vscode from "vscode";
 import OpenAI from 'openai';
 import { prepareProjectPrompt, getPromptTypes } from "../utils/preparePrompt";
-import { dockerLSP } from "../extension";
+import { dockerLSP, verifyHasOpenAIKey } from "../extension";
 
 // Must match package.json contributed configuration
 const ENDPOINT_ENUM_MAP = {
@@ -68,24 +68,16 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         workspaceFolder = workspaceFolders[option.index];
     }
 
+
+    if ((vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') as string).includes('api.openai.com')) {
+        await verifyHasOpenAIKey(secrets, true);
+    }
+
     const promptTypes = getPromptTypes();
-    
-    const promptOption = await vscode.window.showQuickPick(promptTypes.map(f => ({label: f.title, detail: f.title, index: f.type})), {title: "Select prompt type", ignoreFocusOut: true});
+
+    const promptOption = await vscode.window.showQuickPick(promptTypes.map(f => ({ label: f.title, detail: f.title, index: f.type })), { title: "Select prompt type", ignoreFocusOut: true });
 
     let apiKey = await secrets.get("openAIKey");
-
-    const endpoint = vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as string;
-
-    if (!apiKey && endpoint.includes("api.openai.com")) {
-        const result = await vscode.window.showErrorMessage("OpenAI API key not set. Please set it in the settings or change the base URL", { modal: true }, "Edit setting");
-        if (result === "Edit setting") {
-            await vscode.commands.executeCommand("docker.make-runbook.set-openai-api-key", secrets, true);
-            apiKey = await secrets.get("openAIKey");
-        }
-        else {
-            return;
-        }
-    }
 
     const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption!.index) || {});
 

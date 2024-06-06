@@ -34,7 +34,7 @@ export const runHotCommand = async () => {
 
     void vscode.window.showQuickPick(quickPicks).then((tag) => {
         if (!tag) {
-            return;
+            return null;
         }
 
         const terminalIdentifier = `${tag.label}-${tag.workspace}`;
