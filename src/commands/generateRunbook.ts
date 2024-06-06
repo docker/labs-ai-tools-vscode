@@ -69,7 +69,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
     }
 
 
-    if ((vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') as string).includes('api.openai.com')) {
+    if (vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') === 'OpenAI') {
         await verifyHasOpenAIKey(secrets, true);
     }
 
