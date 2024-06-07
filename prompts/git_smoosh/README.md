@@ -5,4 +5,4 @@ extractors:
 
 ## Description
 
-Run a binary and its dependencies in an npm project without a full install.
+Smoosh all of your staged changes into the last commit
