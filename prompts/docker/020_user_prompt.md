@@ -14,19 +14,21 @@ I want to run this project for local development.
 
 My current platform is {{platform}}.
 
-The user is logged in to Docker Hub as {{username}}
+I'm logged in to Docker Hub as {{username}}
 
-The project has the following Dockerfiles:
+My project has the following Dockerfiles:
 
 {{#project.dockerfiles}}
 --- Dockerfile ---
-Dockerfile at `{{path}}` contains:
+Dockerfile at `./{{path}}` contains:
 
 ```dockerfile
 {{content}}
 ```
 
 {{/project.dockerfiles}}
+
+--- Docker Compose Files ---
 
 {{#project.composefiles}}
 --- Compose File ---

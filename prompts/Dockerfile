@@ -16,7 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/prompts.jar /app/prompts.jar
 
 COPY docker docker 
-COPY npm npm
+COPY npm_setup npm_setup
 COPY lazy_docker lazy_docker
 COPY git_hooks git_hooks
 COPY harmonia harmonia

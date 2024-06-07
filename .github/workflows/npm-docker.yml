@@ -28,7 +28,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: prompts/npm
+          context: prompts/npm_setup
           platforms: linux/amd64,linux/arm64
           push: true
           tags: vonwig/extractor-node:latest

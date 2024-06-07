@@ -2,7 +2,7 @@
   "name": "make-runbook",
   "displayName": "make-runbook",
   "description": "Generates a runnable markdown file to make any docker project",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "docker",
   "repository": {
     "type": "git",
