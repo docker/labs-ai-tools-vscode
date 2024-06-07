@@ -11,13 +11,11 @@ See the following for an example:
 ![runbook demo video](./screenshots/demo.gif)
 
 ## Getting started
-
-**Dependency:**
-[Docker-VSCode](https://github.com/docker/docker-vscode) alpha version [(installation instructions)](https://github.com/docker/docker-vscode/tree/main/lsp)
+Docker Desktop must be installed, and running with an active Docker Hub account.
 
 1. Install latest VSIX file https://github.com/docker/labs-make-runbook/releases
-2. Open Workspace
-3. Configure OpenAI API key in VSCode settings: `docker.make-runbook.openai` 
+2. Open your workspace
+3. Execute command `>Set OpenAI API key...` and enter your OpenAI secret key. Alternatively, configure Ollama in settings `docker.make-runbook`
 4. Execute command `>Generate a runbook for this project`
 
 This project is a research prototype. It is ready to try and will give results for any project you try it on.
