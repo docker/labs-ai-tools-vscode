@@ -18,8 +18,7 @@ export const prepareProjectPrompt = (projectRoot: vscode.WorkspaceFolder, userna
 
     const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
 
-    vscode.window.showInformationMessage(['run', '--rm', "-v", "/var/run/docker.sock:/var/run/docker.sock", promptImage, projectRoot.uri.fsPath, username, JSON.stringify(platform), promptType].join(','))
-    const result = spawnSync('docker', ['run', '--rm', "-v", "/var/run/docker.sock:/var/run/docker.sock", promptImage, projectRoot.uri.fsPath, username, JSON.stringify(platform), promptType]);
+    const result = spawnSync('docker', ['run', '--rm', "-v", "/var/run/docker.sock:/var/run/docker.sock", promptImage, projectRoot.uri.fsPath, username, platform, promptType]);
 
     if (result.error) {
         throw result.error;

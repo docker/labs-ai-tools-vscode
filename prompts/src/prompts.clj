@@ -62,7 +62,8 @@
     (= "prompts" (first args))
     [{:type "docker" :title "using docker in my project"}
      {:type "lazy_docker" :title "using lazy-docker"}
-     {:type "npm" :title "using npm"}
+     {:type "npm_setup" :title "using npm"}
+     {:type "git_smoosh" :title "Smoosh changes into last commit"}
      #_{:type "ollama" :title "model quantization with Ollama"}
      #_{:type "git_hooks" :title "set up my git hooks"}
      #_{:type "harmonia" :title "using harmonia to access gpus"}]
@@ -95,8 +96,8 @@
 
 (comment
   (collect-extractors "npm")
-  (all-facts "/Users/slim/docker/labs-make-runbook/" "npm")
-  (->> (-prompts "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm")
+  (all-facts "/Users/slim/docker/labs-make-runbook/" "npm_setup")
+  (->> (-prompts "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm_setup")
        (map :content)
        (map println))
   (->> (-prompts "/Users/slim/docker/genai-stack/" "jimclark106" "darwin" "docker")
