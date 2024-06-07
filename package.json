@@ -15,8 +15,8 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:[Dd]ocker*",
-    "workspaceContains:*.md"
+    "workspaceContains:**/*.md",
+    "onLanguage:markdown"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -96,6 +96,7 @@
   },
   "dependencies": {
     "openai": "^4.38.5",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^8.1.0",
+    "semver": "^7.5.2"
   }
 }
