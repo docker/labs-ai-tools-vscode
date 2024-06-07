@@ -5,7 +5,10 @@ type PromptTypes = [{ title: string, type: string }];
 
 export const getPromptTypes = function (): PromptTypes {
     const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
-    const result = spawnSync('docker', ['run', '--rm', "--pull=always", promptImage, "prompts"]);
+    if (promptImage === "vonwig/prompts") {
+        spawnSync('docker', ['pull', "vonwig/prompts"]);
+    }
+    const result = spawnSync('docker', ['run', '--rm', promptImage, "prompts"]);
     return JSON.parse(result.stdout.toString());
 };
 
