@@ -91,7 +91,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         const auth = spawnSync(
             `echo "https://index.docker.io/v1//access-token" | docker-credential-desktop get`,
             {
-                shell: true,
+                shell: process.platform === 'win32' ? "powershell" : true,
             }
         );
 
@@ -104,7 +104,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         progress.report({ increment: 5, message: "Starting LLM ..." });
 
         const openai = new OpenAI({
-            apiKey,
+            apiKey: apiKey || '',
             baseURL: ENDPOINT_ENUM_MAP[(await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as 'Ollama' | 'OpenAI')]
         });
 
