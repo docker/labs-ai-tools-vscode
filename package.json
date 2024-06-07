@@ -61,7 +61,7 @@
     "commands": [
       {
         "command": "docker.make-runbook.generate",
-        "title": "Generate a runbook for this project"
+        "title": "Generate a runbook"
       },
       {
         "command": "docker.make-runbook.run",
