@@ -8,7 +8,8 @@
    [clojure.string :as string]
    [markdown.core :as markdown]
    [pogonos.core :as stache]
-   [medley.core :as medley]))
+   [medley.core :as medley]
+   [git :as git]))
 
 (defn- facts [project-facts user platform]
   (medley/deep-merge
@@ -41,7 +42,7 @@
     (medley/deep-merge
       m
       (docker/extract-facts container-definition dir))
-    (catch Throwable e
+    (catch Throwable _
       m)))
 
 (defn collect-extractors [dir]
@@ -63,15 +64,18 @@
     [{:type "docker" :title "using docker in my project"}
      {:type "lazy_docker" :title "using lazy-docker"}
      {:type "npm_setup" :title "using npm"}
-     {:type "git_smoosh" :title "Smoosh changes into last commit"}
      #_{:type "ollama" :title "model quantization with Ollama"}
      #_{:type "git_hooks" :title "set up my git hooks"}
      #_{:type "harmonia" :title "using harmonia to access gpus"}]
 
     :else
     (let [[project-root user platform dir] args
-          m (all-facts project-root dir)
-          prompt-dir (or dir "docker")
+          ;; TODO the docker default no longer makes sense here
+          prompt-dir (or 
+                       (when (string/starts-with? dir "github") (git/prompt-dir dir)) 
+                       dir 
+                       "docker")
+          m (all-facts project-root prompt-dir)
           renderer (partial selma-render (facts m user platform))
           prompts (->> (fs/list-dir prompt-dir)
                        (filter (name-matches prompt-file-pattern))
@@ -81,7 +85,7 @@
 
 (comment
   (pprint
-   (-prompts "{}" "jimclark106" "darwin")))
+   (-prompts "/Users/slim/docker/labs-make-runbook" "jimclark106" "darwin" "github:docker/labs-make-runbook?ref=main&path=prompts/docker")))
 
 (defn prompts [& args]
   (println
@@ -92,7 +96,13 @@
   (markdown/md-to-meta (slurp (io/file "crap.md"))))
 
 (defn -main [& args]
-  (apply prompts args))
+  (try
+    (apply prompts args)
+    (catch Throwable t
+      (binding [*out* *err*]
+        (println "Error:" (.getMessage t))
+        (println "Stacktrace:" (.getStackTraceString t))
+      (System/exit 1)))))
 
 (comment
   (collect-extractors "npm")

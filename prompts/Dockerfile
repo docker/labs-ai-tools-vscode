@@ -1,6 +1,13 @@
 FROM babashka/babashka:latest@sha256:4bc4beea38406782845ae8effaa9bd2f45345d46a4290ea4c96037970a0ca430 AS bb
 
-FROM eclipse-temurin:latest AS deps
+FROM bb AS base
+
+RUN <<EOF
+apt-get update
+apt-get install -y git
+EOF
+
+FROM eclipse-temurin:latest@sha256:ac1545309de7e27001a80d91df2d42865c0bacaec75e016cb4482255d7691187 AS build
 
 WORKDIR /app
 
@@ -9,11 +16,11 @@ COPY bb.edn bb.edn
 COPY ./src ./src
 RUN bb uberjar prompts.jar -m prompts
 
-FROM bb
+FROM base
 
 WORKDIR /app
 
-COPY --from=deps /app/prompts.jar /app/prompts.jar
+COPY --from=build /app/prompts.jar /app/prompts.jar
 
 COPY docker docker 
 COPY npm_setup npm_setup

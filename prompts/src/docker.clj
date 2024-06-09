@@ -4,16 +4,28 @@
    [cheshire.core :as json]
    [clojure.pprint :refer [pprint]]))
 
+(defn pull-image [{:keys [image]}]
+  (curl/post
+   (format "http://localhost/images/create?fromImage=%s" image)
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]}))
+
+(defn container->archive [{:keys [Id path]}]
+  (curl/get
+   (format "http://localhost/containers/%s/archive?path=%s" Id path)
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]
+    :as :stream}))
+
 ;; check for 201
 (defn create-container [{:keys [image entrypoint command host-dir]}]
   (let [payload (json/generate-string
-                  (merge
-                    {:Image image
-                     :Tty true
-                     :HostConfig {:Binds [(format "%s:/project:ro" host-dir)
-                                          "docker-lsp:/docker"]}}
-                    (when entrypoint {:Entrypoint entrypoint})
-                    (when command {:Cmd command})))]
+                 (merge
+                  {:Image image
+                   :Tty true}
+                  (when host-dir {:HostConfig
+                                  {:Binds [(format "%s:/project:ro" host-dir)
+                                           "docker-lsp:/docker"]}})
+                  (when entrypoint {:Entrypoint entrypoint})
+                  (when command {:Cmd command})))]
     (curl/post
      "http://localhost/containers/create"
      {:raw-args ["--unix-socket" "/var/run/docker.sock"]
@@ -57,6 +69,8 @@
 (def wait (comp (status? 200 "wait-container") wait-container))
 (def attach (comp (status? 200 "attach-container") attach-container))
 (def delete (comp (status? 204 "delete-container") delete-container))
+(def get-archive (comp (status? 200 "container->archive") container->archive))
+(def pull (comp (status? 200 "pull-image") pull-image))
 
 (def sample {:image "docker/lsp:latest"
              :entrypoint "/app/result/bin/docker-lsp"
@@ -64,7 +78,17 @@
                        "--vs-machine-id" "none"
                        "--workspace" "/docker"]})
 
+(defn extract-prompts [container]
+  (let [x (create container)
+        response (get-archive (assoc x :path "/prompts"))]
+    ;; stream archive to file
+    (delete x)))
+
+(comment
+  (def prompt-container (create {:image "vonwig/git-smoosh:local"})))
+
 (defn extract-facts [container host-dir]
+  (pull container)
   (let [x (create (assoc container :host-dir host-dir))]
     (start x)
     (wait x)
@@ -74,11 +98,10 @@
 
 (comment
   (pprint (json/parse-string (extract-facts sample "/Users/slim/docker/genai-stack") keyword))
-  (pprint 
-    (json/parse-string 
-      (extract-facts 
-        {:image "vonwig/extractor-node:latest"} 
-        "/Users/slim/docker/labs-make-runbook")
-      keyword))
-  )
+  (pprint
+   (json/parse-string
+    (extract-facts
+     {:image "vonwig/extractor-node:latest"}
+     "/Users/slim/docker/labs-make-runbook")
+    keyword)))
 

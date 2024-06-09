@@ -1,55 +1,55 @@
-## Building
-
-```sh
-#docker:command=builds
-docker build -t vonwig/prompts -f Dockerfile .
-```
-
-```sh
-#docker:command=push
-docker push vonwig/prompts
-```
 
 ## Running
 
-To run this project, use the following run command:
+To generate prompts for a project, run the following command, clone a repo into `$PWD` and run the 
+following command.
 
 ```sh
-#docker:command=run
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock vonwig/prompts $PWD my_docker_username darwin npm_setup
+docker run --rm \
+           -v /var/run/docker.sock:/var/run/docker.sock \
+           --mount type=volume,source=docker-prompts,target=/prompts \
+           vonwig/prompts:local $PWD \
+                                jimclark106 \
+                                darwin \
+                                "github:docker/labs-make-runbook?ref=main&path=prompts/lazy_docker"
 ```
 
-The four arguments are `project root dir`, `docker username`, `platform`, and a top-level prompt folder.
+The four arguments are `project root dir`, `docker username`, `platform`, and the `github ref` for versioned prompt files.
 
-The possible top-level prompt folders can be queried by running the following:
+If you need to test prompts locally, you can open a terminal in your prompts directory and then type the following command
+to test them.
 
 ```sh
-#docker:command=run-get-prompts
-docker run vonwig/prompts prompts
+docker run --rm \
+           -v /var/run/docker.sock:/var/run/docker.sock \
+           -v $PWD:/app/my_prompts \
+           --workdir /app
+           vonwig/prompts:local $PWD \
+                                jimclark106 \
+                                darwin \
+                                my_prompts
 ```
 
-* the first argument is the serialized `application/json` map of projects facts.
+### GitHub refs
 
-## Custom prompts
+Prompts are fetched from a GitHub repository.  The mandatory parts of the ref are `github:{owner}/{repo}` 
+but optional `path` and `ref` can be added to pull prompts from branches, and to specify a subdirectory
+where the prompt files are located in the repo.
 
-1. create an empty directory add some example prompts like the ones [here](./v1).
+### Prompt file layout
 
-    Each prompt file is a moustache template.  Ordering of prompts is
-    determined by filename sorting.  Each prompt filename must conform to one of
-    `.*_system_.*\.txt`, `.*_user_.*\.txt`, or `.*_assistant_.*\.txt`, depending
-    on the role of the message.
+Each prompt directory should contain a README.md describing the prompts and their purpose.  Each prompt file
+is a markdown document that supports moustache templates for subsituting context extracted from the project.
 
-2. For custom prompts, a project directory can be mounted.
+```
+prompt_dir/
+├── 010_system_prompt.md
+├── 020_user_prompt.md
+└── README.md
+```
 
-    ```sh
-    docker run \
-      --mount type=bind,source=$PROMPT_DIR,target=/app/prompts \
-      vonwig/prompts \
-      {json facts string} {username} {platform} prompts
-
-    ```
-
-    This is useful when developing prompts.
+* ordering of messages is determined by filename sorting
+* the role is encoded in the name of the file
 
 ### Moustache Templates
 
@@ -66,3 +66,11 @@ prompts are:
 The entire `project-facts` map is also available using dot-syntax
 forms like `{{project-facts.project-root-uri}}`.  All moustache template
 expressions documented [here](https://github.com/yogthos/Selmer) are supported.
+
+## Building
+
+```sh
+#docker:command=builds
+docker build -t vonwig/prompts:local -f Dockerfile .
+```
+
