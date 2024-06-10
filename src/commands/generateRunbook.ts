@@ -95,6 +95,10 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
             }
         );
 
+        if (!auth.stdout.toString().startsWith("{")) {
+            throw new Error("Docker Desktop not logged in. Please login to Docker Desktop and try again.");
+        }
+
         const authPayload = JSON.parse(auth.stdout.toString()) as {
             "ServerURL": string,
             "Username": string,
@@ -135,6 +139,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         await doc.save();
     } catch (e: unknown) {
+        e = e as Error;
         void vscode.window.showErrorMessage("Error generating runbook");
         await editor.edit((edit) => {
             edit.insert(
