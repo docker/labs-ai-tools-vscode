@@ -1,6 +1,5 @@
 ---
-extractors:
-  - image: vonwig/extractor-node:latest
+
 ---
 
 ## Description

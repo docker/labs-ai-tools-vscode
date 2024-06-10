@@ -1,1 +1,1 @@
-I need a command smooshed. What is the command and how does it work?
+I need my last commit smooshed. Can you generate a runbook?
