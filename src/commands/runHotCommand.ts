@@ -25,11 +25,22 @@ export const runHotCommand = async () => {
 
         const groupedBlocks = groupCommands(blocks);
 
-        quickPicks.push(...Object.entries(groupedBlocks).map(([command, script]) => ({
-            label: command,
-            detail: script,
-            workspace: runbookFSPath,
-        })));
+
+
+        quickPicks.push(...Object.entries(groupedBlocks).map(([command, script]) => {
+            const existingTerminal = vscode.window.terminals.find(terminal => terminal.name === `${command}-${runbookFSPath}`);
+            if (existingTerminal) {
+                existingTerminal.processId.then((pid) => {
+                    vscode.window.showInformationMessage(`PID: ${pid}`);
+                });
+            }
+            return {
+                label: command,
+                detail: script,
+                description: ``,
+                workspace: runbookFSPath,
+            };
+        }));
     };
 
     void vscode.window.showQuickPick(quickPicks).then((tag) => {
