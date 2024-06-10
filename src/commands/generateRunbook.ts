@@ -13,6 +13,8 @@ const ENDPOINT_ENUM_MAP = {
     Ollama: "http://localhost:11434/v1"
 };
 
+const DEFAULT_USER = "local-user";
+
 const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
     const uri = vscode.Uri.file(
         workspaceFolder.uri.fsPath + `/runbook.${promptType}.md`
@@ -95,11 +97,16 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
             }
         );
 
-        const authPayload = JSON.parse(auth.stdout.toString()) as {
-            "ServerURL": string,
-            "Username": string,
-            "Secret": string
-        };
+        let Username = DEFAULT_USER;
+
+        if (!auth.stdout.toString().startsWith("{") || auth.status !== 0 || auth.error) {
+            const authPayload = JSON.parse(auth.stdout.toString()) as {
+                "ServerURL": string,
+                "Username": string,
+                "Secret": string
+            };
+            Username = authPayload.Username;
+        }
 
         progress.report({ increment: 5, message: "Starting LLM ..." });
 
@@ -110,7 +117,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         progress.report({ increment: 5, message: "Preparing payload..." });
 
-        const messages = prepareProjectPrompt(workspaceFolder, authPayload.Username, promptOption!.index);
+        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption!.index);
 
         progress.report({ increment: 5, message: "Calling LLM..." });
 
@@ -135,6 +142,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         await doc.save();
     } catch (e: unknown) {
+        e = e as Error;
         void vscode.window.showErrorMessage("Error generating runbook");
         await editor.edit((edit) => {
             edit.insert(
