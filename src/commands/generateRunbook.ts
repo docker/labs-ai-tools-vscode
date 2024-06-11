@@ -16,6 +16,7 @@ const ENDPOINT_ENUM_MAP = {
 const DEFAULT_USER = "local-user";
 
 const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
+
     const uri = vscode.Uri.file(
         workspaceFolder.uri.fsPath + `/runbook.${promptType}.md`
     );
@@ -47,6 +48,19 @@ const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promp
 };
 
 export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
+    // Check docker command exists
+    try {
+        const res = spawnSync("docker", ["--version"]);
+        if (res.error) {
+            throw res.error;
+        }
+    } catch (e) {
+        return vscode.window.showErrorMessage("Docker not found", { modal: true }, "Install Docker Desktop").then((value) => {
+            if (value === "Install Docker Desktop") {
+                vscode.env.openExternal(vscode.Uri.parse("https://www.docker.com/products/docker-desktop"));
+            }
+        });
+    }
 
     progress.report({ increment: 0, message: "Starting..." });
 
