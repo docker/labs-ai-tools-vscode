@@ -50,14 +50,23 @@ const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promp
 export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
     // Check docker command exists
     try {
-        const res = spawnSync("docker", ["--version"]);
+        const res = spawnSync("docker", ["version"]);
+
         if (res.error) {
             throw res.error;
         }
-    } catch (e) {
-        return vscode.window.showErrorMessage("Docker not found", { modal: true }, "Install Docker Desktop").then((value) => {
+
+        if (res.status !== 0) {
+            throw new Error(`Docker command exited with code ${res.status} and output the following error: ${res.error || res.stderr.toString()}`);
+        }
+
+    } catch (e: unknown) {
+        return vscode.window.showErrorMessage("Error starting Docker", { modal: true, detail: (e as Error).toString() }, "Install Docker Desktop", "Try again").then((value) => {
             if (value === "Install Docker Desktop") {
                 vscode.env.openExternal(vscode.Uri.parse("https://www.docker.com/products/docker-desktop"));
+            }
+            else if (value === "Try again") {
+                vscode.commands.executeCommand("docker.make-runbook.generate");
             }
         });
     }
@@ -92,6 +101,10 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
     const promptTypes = getPromptTypes();
 
     const promptOption = await vscode.window.showQuickPick(promptTypes.map(f => ({ label: f.title, detail: f.title, index: f.type })), { title: "Select prompt type", ignoreFocusOut: true });
+
+    if (!promptOption) {
+        return;
+    }
 
     let apiKey = await secrets.get("openAIKey");
 
