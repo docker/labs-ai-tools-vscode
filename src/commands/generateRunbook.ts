@@ -113,7 +113,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         let Username = DEFAULT_USER;
 
-        if (auth.stdout.toString().startsWith("{") && auth.status !== 0 && !auth.error) {
+        if (auth.stdout.toString().startsWith("{") && auth.status === 0 && !auth.error) {
             const authPayload = JSON.parse(auth.stdout.toString()) as {
                 "ServerURL": string,
                 "Username": string,
