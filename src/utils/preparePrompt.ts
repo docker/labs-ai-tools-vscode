@@ -29,8 +29,6 @@ export const prepareProjectPrompt = (projectRoot: vscode.WorkspaceFolder, userna
 
     const result = spawnSync('docker', promptImageArgs);
 
-    vscode.window.showInformationMessage(`Command run: docker ${promptImageArgs.join(" ")}`);
-
     if (result.error) {
         throw result.error;
     }
