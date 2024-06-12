@@ -1,7 +1,7 @@
 import { spawnSync } from "child_process";
 import * as vscode from "vscode";
 
-type PromptTypes = [{ title: string, type: string }];
+type PromptTypes = [{ title: string, type: string; saved: boolean }];
 
 export const getPromptTypes = function (): PromptTypes {
     // github:docker/labs-make-runbook?ref=main&path=prompts/docker

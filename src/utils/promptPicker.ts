@@ -1,8 +1,9 @@
-import { QuickPickItem, window } from "vscode";
+import { QuickPickItem, QuickPickItemKind, ThemeIcon, commands, window, workspace } from "vscode";
 import { getPromptTypes } from "./preparePrompt";
 
 export interface PromptTypeOption extends QuickPickItem {
     id: string;
+    saved?: boolean;
 }
 
 export const showPromptPicker = () =>
@@ -10,10 +11,37 @@ export const showPromptPicker = () =>
 
         const promptTypes = getPromptTypes();
         const promptTypeItems = promptTypes.map(f => (
-            { label: f.title, detail: `Generate runbook to use ${f.type} in this project`, id: f.type, description: "Built-in" }
+            {
+                label: f.title,
+                detail: `Generate runbook to use ${f.type} in this project`,
+                id: f.type,
+                description: "Built-in",
+                buttons: f.saved ? [{
+                    iconPath: new ThemeIcon('trash'),
+                    tooltip: 'Delete saved command'
+                }] : undefined,
+                saved: f.saved
+            }
         ));
+
+        const getDefaultItems = () => {
+
+            const defaultItems = [
+                {
+                    kind: QuickPickItemKind.Separator,
+                    label: "Saved",
+                    id: "separator"
+                } as PromptTypeOption, ...promptTypeItems.filter(i => i.saved), {
+                    kind: QuickPickItemKind.Separator,
+                    label: "Built-In",
+                    id: "separator"
+                } as PromptTypeOption, ...promptTypeItems.filter(i => !i.saved)];
+
+            return defaultItems;
+        };
+
         const quickPick = window.createQuickPick<PromptTypeOption>();
-        quickPick.items = promptTypeItems;
+        quickPick.items = getDefaultItems();
         quickPick.title = "Select runbook type";
         quickPick.ignoreFocusOut = true;
         quickPick.onDidChangeValue((val) => {
@@ -29,7 +57,12 @@ export const showPromptPicker = () =>
                         label: "GitHub Ref", // Label must be val for quickpick to work properly
                         detail: `Repo: <${owner}/${repo}> Ref: <${ref.split('=')[1]}> Args: <${args.join("&")}>`, // Detail must be val for consistency
                         description: "github:owner/repo?ref=main&path=your/prompts/dir",
-                        alwaysShow: true
+                        alwaysShow: true,
+                        // Button for saving command to workspace config
+                        buttons: [{
+                            iconPath: new ThemeIcon('save'),
+                            tooltip: 'Save command to workspace configuration'
+                        }]
                     }];
                 }
                 catch (e) {
@@ -37,7 +70,7 @@ export const showPromptPicker = () =>
                 }
             }
             else {
-                quickPick.items = promptTypeItems;
+                quickPick.items = getDefaultItems();
             }
         });
         quickPick.onDidAccept(() => {
@@ -47,6 +80,18 @@ export const showPromptPicker = () =>
         quickPick.onDidHide(() => {
             resolve(undefined);
         });
+        quickPick.onDidTriggerItemButton(async ({ item }) => {
+            if (item.id) {
+                if (item.saved) {
+                    await commands.executeCommand("docker.make-runbook.delete-prompt", item.id);
+                    quickPick.items = getDefaultItems();
+                }
+                else {
+                    await commands.executeCommand("docker.make-runbook.save-prompt", item.id);
+                    quickPick.items = getDefaultItems();
+                }
 
+            }
+        });
         quickPick.show();
     });
