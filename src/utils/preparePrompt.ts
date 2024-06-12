@@ -4,12 +4,19 @@ import * as vscode from "vscode";
 type PromptTypes = [{ title: string, type: string }];
 
 export const getPromptTypes = function (): PromptTypes {
+    // github:docker/labs-make-runbook?ref=main&path=prompts/docker
     const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
     if (promptImage === "vonwig/prompts" || promptImage === "vonwig/prompts:latest") {
         spawnSync('docker', ['pull', "vonwig/prompts"]);
     }
-    const result = spawnSync('docker', ['run', '--rm', promptImage, "prompts"]);
-    return JSON.parse(result.stdout.toString());
+    const result = spawnSync('docker', ['run', promptImage, "prompts"]);
+    try {
+        return JSON.parse(result.stdout.toString());
+    }
+    catch (e) {
+        throw new Error(`Expected JSON from ${promptImage}, got STDOUT: ${result.stdout.toString()} STDERR: ${result.stderr.toString()} ERR: ${(result.error || "N/A").toString()}`);
+    }
+
 };
 
 export const prepareProjectPrompt = (projectRoot: vscode.WorkspaceFolder, username: string, promptType: string) => {
@@ -18,11 +25,19 @@ export const prepareProjectPrompt = (projectRoot: vscode.WorkspaceFolder, userna
 
     const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
 
-    const result = spawnSync('docker', ['run', '--rm', "-v", "/var/run/docker.sock:/var/run/docker.sock", "--mount", "type=volume,source=docker-prompts,target=/prompts", promptImage, projectRoot.uri.fsPath, username, platform, promptType]);
+    const promptImageArgs = ['run', '--rm', "-v", "/var/run/docker.sock:/var/run/docker.sock", "--mount", "type=volume,source=docker-prompts,target=/prompts", promptImage, projectRoot.uri.fsPath, username, platform, promptType];
+
+    const result = spawnSync('docker', promptImageArgs);
+
+    vscode.window.showInformationMessage(`Command run: docker ${promptImageArgs.join(" ")}`);
 
     if (result.error) {
         throw result.error;
     }
-
-    return JSON.parse(result.stdout.toString());
+    try {
+        return JSON.parse(result.stdout.toString());
+    }
+    catch (e) {
+        throw new Error(`Expected JSON from ${promptImage}, got STDOUT: ${result.stdout.toString()} STDERR: ${result.stderr.toString()} ERR: ${(result.error || "N/A").toString()}`);
+    }
 };

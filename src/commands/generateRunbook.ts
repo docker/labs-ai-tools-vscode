@@ -18,8 +18,16 @@ const DEFAULT_USER = "local-user";
 
 const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
 
+    let friendlyPromptName = promptType;
+
+    if (friendlyPromptName.startsWith("github:")) {
+        const repo = friendlyPromptName.split("github:")[1].split("?")[0].replace("/", "-");
+        const path = friendlyPromptName.split("path=")[1].split("&")[0].replaceAll("/", "-");
+        friendlyPromptName = `gh-${repo}:${path}`;
+    }
+
     const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + `/runbook.${promptType}.md`
+        workspaceFolder.uri.fsPath + `/runbook.${friendlyPromptName}.md`
     );
 
     try {
@@ -98,7 +106,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
     let apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption.detail!) || {});
+    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption.id) || {});
 
     if (!editor || !doc) {
         return;
@@ -117,12 +125,18 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         let Username = DEFAULT_USER;
 
         if (auth.stdout.toString().startsWith("{") && auth.status === 0 && !auth.error) {
-            const authPayload = JSON.parse(auth.stdout.toString()) as {
-                "ServerURL": string,
-                "Username": string,
-                "Secret": string
-            };
-            Username = authPayload.Username;
+            try {
+                const authPayload = JSON.parse(auth.stdout.toString()) as {
+                    "ServerURL": string,
+                    "Username": string,
+                    "Secret": string
+                };
+                Username = authPayload.Username;
+            }
+            catch (e) {
+                throw new Error(`Expected JSON from docker-credential-desktop, got STDOUT: ${auth.stdout.toString()} STDERR: ${auth.stderr.toString()} ERR: ${(auth.error || "N/A").toString()}`);
+            }
+
         }
 
         progress.report({ increment: 5, message: "Starting LLM ..." });
@@ -134,7 +148,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         progress.report({ increment: 5, message: "Preparing payload..." });
 
-        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption.label);
+        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption.id);
 
         progress.report({ increment: 5, message: "Calling LLM..." });
 
