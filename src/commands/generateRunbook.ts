@@ -4,9 +4,9 @@ import {
 import { TextEncoder } from "util";
 import * as vscode from "vscode";
 import OpenAI from 'openai';
-import { prepareProjectPrompt, getPromptTypes } from "../utils/preparePrompt";
+import { prepareProjectPrompt } from "../utils/preparePrompt";
 import { verifyHasOpenAIKey } from "../extension";
-import { getPromptForPrompt } from "../utils/promptForPrompt";
+import { showPromptPicker } from "../utils/promptPicker";
 
 // Must match package.json contributed configuration
 const ENDPOINT_ENUM_MAP = {
@@ -98,7 +98,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         await verifyHasOpenAIKey(secrets, true);
     }
 
-    const promptOption = await getPromptForPrompt();
+    const promptOption = await showPromptPicker();
 
     if (!promptOption) {
         return;

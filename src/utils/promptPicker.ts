@@ -5,7 +5,7 @@ export interface PromptTypeOption extends QuickPickItem {
     id: string;
 }
 
-export const getPromptForPrompt = () =>
+export const showPromptPicker = () =>
     new Promise<PromptTypeOption | undefined>((resolve) => {
 
         const promptTypes = getPromptTypes();
