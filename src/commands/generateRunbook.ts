@@ -78,14 +78,11 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
     } catch (e: DockerSpawnError) {
 
         const platform = process.platform;
-        const actionItems = e.code !== -1 ? [(platform in START_DOCKER_COMMAND ? "Start Docker & Retry" : "Try again")] : ["Install Docker Desktop", "Try again"];
+        const actionItems = e.code !== -1 ? [(platform in START_DOCKER_COMMAND ? "Start Docker" : "Try again")] : ["Install Docker Desktop", "Try again"];
         return vscode.window.showErrorMessage("Error starting Docker", { modal: true, detail: (e as DockerSpawnError).toString() }, ...actionItems).then(async (value) => {
             switch (value) {
-                case "Start Docker & Retry":
+                case "Start Docker":
                     spawnSync(START_DOCKER_COMMAND[platform as keyof typeof START_DOCKER_COMMAND], { shell: true });
-                    // Wait 4 seconds for docker to start up
-                    await new Promise((resolve) => setTimeout(resolve, 4000));
-                    return vscode.commands.executeCommand("docker.make-runbook.generate");
                 case "Install Docker Desktop":
                     vscode.env.openExternal(vscode.Uri.parse("https://www.docker.com/products/docker-desktop"));
                     return;
