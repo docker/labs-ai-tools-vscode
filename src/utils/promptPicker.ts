@@ -6,36 +6,41 @@ export interface PromptTypeOption extends QuickPickItem {
     saved?: boolean;
 }
 
-export const showPromptPicker = () =>
+export const showPromptPicker = (skipBuiltins = false) =>
     new Promise<PromptTypeOption | undefined>((resolve) => {
-
-        const promptTypes = getPromptTypes();
-        const promptTypeItems = promptTypes.map(f => (
-            {
-                label: f.title,
-                detail: `Generate runbook to use ${f.type} in this project`,
-                id: f.type,
-                description: "Built-in",
-                buttons: f.saved ? [{
-                    iconPath: new ThemeIcon('trash'),
-                    tooltip: 'Delete saved command'
-                }] : undefined,
-                saved: f.saved
-            }
-        ));
+        let promptTypeItems: PromptTypeOption[] = [];
 
         const getDefaultItems = () => {
-
+            if (!skipBuiltins) {
+                const promptTypes = getPromptTypes();
+                promptTypeItems = promptTypes.map(f => (
+                    {
+                        label: f.title,
+                        detail: `Generate runbook to use ${f.type} in this project`,
+                        id: f.type,
+                        description: "Built-in",
+                        buttons: f.saved ? [{
+                            iconPath: new ThemeIcon('trash'),
+                            tooltip: 'Delete saved command'
+                        }] : undefined,
+                        saved: f.saved
+                    }
+                ));
+            }
             const defaultItems = [
                 {
                     kind: QuickPickItemKind.Separator,
                     label: "Saved",
                     id: "separator"
-                } as PromptTypeOption, ...promptTypeItems.filter(i => i.saved), {
+                } as PromptTypeOption,
+                ...promptTypeItems.filter(i => i.saved),
+                {
                     kind: QuickPickItemKind.Separator,
                     label: "Built-In",
                     id: "separator"
-                } as PromptTypeOption, ...promptTypeItems.filter(i => !i.saved)];
+                } as PromptTypeOption,
+                ...promptTypeItems.filter(i => !i.saved)
+            ];
 
             return defaultItems;
         };
@@ -59,7 +64,7 @@ export const showPromptPicker = () =>
                         description: "github:owner/repo?ref=main&path=your/prompts/dir",
                         alwaysShow: true,
                         // Button for saving command to workspace config
-                        buttons: [{
+                        buttons: skipBuiltins ? [] : [{
                             iconPath: new ThemeIcon('save'),
                             tooltip: 'Save command to workspace configuration'
                         }]

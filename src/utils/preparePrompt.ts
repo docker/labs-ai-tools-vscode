@@ -4,12 +4,12 @@ import * as vscode from "vscode";
 type PromptTypes = [{ title: string, type: string; saved: boolean }];
 
 export const getPromptTypes = function (): PromptTypes {
-    // github:docker/labs-make-runbook?ref=main&path=prompts/docker
+    // github:docker/labs-make-runbook?ref=main&path=prompts/git_smoosh
     const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
     if (promptImage === "vonwig/prompts" || promptImage === "vonwig/prompts:latest") {
         spawnSync('docker', ['pull', "vonwig/prompts"]);
     }
-    const result = spawnSync('docker', ['run', promptImage, "prompts"]);
+    const result = spawnSync('docker', ['run', "--mount", "type=volume,source=docker-prompts,target=/prompts", promptImage, "prompts"]);
     try {
         return JSON.parse(result.stdout.toString());
     }
