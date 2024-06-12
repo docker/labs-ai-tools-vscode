@@ -54,24 +54,32 @@ const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promp
 };
 
 export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
-    // Check docker command exists
-    let dockerExists = false;
+
+    // Coerce the error to have an exit code and stderr property
+    type DockerSpawnError = Error & { code: number, stderr: string };
+
     try {
         const res = spawnSync("docker", ["version"]);
 
         if (res.error) {
+            // Using -1 to indicate docker is not installed
+            (res.error as DockerSpawnError).code = -1;
             throw res.error;
         }
 
-        dockerExists = true;
-
         if (res.status !== 0) {
-            throw new Error(`Docker command exited with code ${res.status} and output the following error: ${res.error || res.stderr.toString()}`);
+            const err = new Error(`Docker command exited with code ${res.status} and output the following error: ${res.error || res.stderr.toString()}`);
+            // Using -1 as a fallback, should have already been caught by res.error
+            (err as DockerSpawnError).code = res.status || -1;
+            (err as DockerSpawnError).stderr = res.stderr.toString();
+            throw err;
         }
 
-    } catch (e: unknown) {
+        // @ts-expect-error
+    } catch (e: DockerSpawnError) {
+
         const platform = process.platform;
-        const actionItems = dockerExists ? [(platform in START_DOCKER_COMMAND ? "Start Docker & Retry" : "Try again")] : ["Install Docker Desktop", "Try again"];
+        const actionItems = e.code !== -1 ? [(platform in START_DOCKER_COMMAND ? "Start Docker & Retry" : "Try again")] : ["Install Docker Desktop", "Try again"];
         return vscode.window.showErrorMessage("Error starting Docker", { modal: true, detail: (e as Error).toString() }, ...actionItems).then(async (value) => {
             switch (value) {
                 case "Start Docker & Retry":
