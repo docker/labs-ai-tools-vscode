@@ -1,30 +1,31 @@
 (ns prompts
   (:require
-   [docker]
    [babashka.fs :as fs]
    [cheshire.core :as json]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :refer [pprint]]
    [clojure.string :as string]
+   [docker]
+   [git :as git]
    [markdown.core :as markdown]
-   [pogonos.core :as stache]
    [medley.core :as medley]
-   [git :as git]))
+   [pogonos.core :as stache]))
 
 (defn- facts [project-facts user platform]
   (medley/deep-merge
-    {:platform platform
-     :username user
-     :project {:files (-> project-facts :project/files)
-               :dockerfiles (-> project-facts :project/dockerfiles)
-               :composefiles (-> project-facts :project/composefiles)
-               :languages (-> project-facts :github/lingust)}
-     :languages (->> project-facts
-                     :github/linguist
-                     keys
-                     (map name)
-                     (string/join ", "))}
-    project-facts))
+   {:platform platform
+    :username user
+    :project {:files (-> project-facts :project/files)
+              :dockerfiles (-> project-facts :project/dockerfiles)
+              :composefiles (-> project-facts :project/composefiles)
+              :languages (-> project-facts :github/lingust)}
+    :languages (->> project-facts
+                    :github/linguist
+                    keys
+                    (map name)
+                    (string/join ", "))}
+   project-facts))
 
 (defn- name-matches [re]
   (fn [p] (re-matches re (fs/file-name p))))
@@ -40,8 +41,8 @@
 (defn fact-reducer [dir m container-definition]
   (try
     (medley/deep-merge
-      m
-      (docker/extract-facts container-definition dir))
+     m
+     (docker/extract-facts container-definition dir))
     (catch Throwable _
       m)))
 
@@ -58,23 +59,55 @@
 (defn all-facts [project-root dir]
   (reduce (partial fact-reducer project-root) {} (collect-extractors dir)))
 
+(def registry-file "/prompts/registry.edn")
+
+(defn read-registry []
+  (try
+    (edn/read-string (slurp registry-file))
+    (catch java.io.FileNotFoundException _
+      {:prompts []})
+    (catch Throwable t
+      (binding [*out* *err*]
+        (println "Warning (corrupt registry.edn): " (.getMessage t)))
+      {:prompts []})))
+
+(defn update-registry [f]
+  (spit registry-file (pr-str (f (read-registry)))))
+
 (defn- -prompts [& args]
   (cond
     (= "prompts" (first args))
-    [{:type "docker" :title "using docker in my project"}
-     {:type "lazy_docker" :title "using lazy-docker"}
-     {:type "npm_setup" :title "using npm"}
-     #_{:type "ollama" :title "model quantization with Ollama"}
-     #_{:type "git_hooks" :title "set up my git hooks"}
-     #_{:type "harmonia" :title "using harmonia to access gpus"}]
+    (concat
+     [{:type "docker" :title "using docker in my project"}
+      {:type "lazy_docker" :title "using lazy-docker"}
+      {:type "npm_setup" :title "using npm"}
+      #_{:type "ollama" :title "model quantization with Ollama"}
+      #_{:type "git_hooks" :title "set up my git hooks"}
+      #_{:type "harmonia" :title "using harmonia to access gpus"}]
+     (:prompts (read-registry)))
+
+    (= "register" (first args))
+    (if-let [{:keys [owner repo path]} (git/parse-github-ref (second args))]
+      (update-registry (fn [m]
+                         (update-in m [:prompts] (fnil conj [])
+                                    {:type (second args)
+                                     :title (format "%s %s %s"
+                                                    owner repo
+                                                    (if path (str "-> " path) ""))})))
+      (throw (ex-info "Bad GitHub ref" {:ref (second args)})))
+
+    (= "unregister" (first args))
+    (update-registry 
+      (fn [m] 
+        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
 
     :else
     (let [[project-root user platform dir] args
           ;; TODO the docker default no longer makes sense here
-          prompt-dir (or 
-                       (when (string/starts-with? dir "github") (git/prompt-dir dir)) 
-                       dir 
-                       "docker")
+          prompt-dir (or
+                      (when (string/starts-with? dir "github") (git/prompt-dir dir))
+                      dir
+                      "docker")
           m (all-facts project-root prompt-dir)
           renderer (partial selma-render (facts m user platform))
           prompts (->> (fs/list-dir prompt-dir)
@@ -101,8 +134,7 @@
     (catch Throwable t
       (binding [*out* *err*]
         (println "Error:" (.getMessage t))
-        (println "Stacktrace:" (.getStackTraceString t))
-      (System/exit 1)))))
+        (System/exit 1)))))
 
 (comment
   (collect-extractors "npm")
