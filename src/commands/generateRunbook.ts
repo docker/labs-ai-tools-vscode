@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 import OpenAI from 'openai';
 import { prepareProjectPrompt, getPromptTypes } from "../utils/preparePrompt";
 import { verifyHasOpenAIKey } from "../extension";
+import { getPromptForPrompt } from "../utils/promptForPrompt";
 
 // Must match package.json contributed configuration
 const ENDPOINT_ENUM_MAP = {
@@ -89,13 +90,15 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         await verifyHasOpenAIKey(secrets, true);
     }
 
-    const promptTypes = getPromptTypes();
+    const promptOption = await getPromptForPrompt();
 
-    const promptOption = await vscode.window.showQuickPick(promptTypes.map(f => ({ label: f.title, detail: f.title, index: f.type })), { title: "Select prompt type", ignoreFocusOut: true });
+    if (!promptOption) {
+        return;
+    }
 
     let apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption!.index) || {});
+    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption.detail!) || {});
 
     if (!editor || !doc) {
         return;
@@ -131,7 +134,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         progress.report({ increment: 5, message: "Preparing payload..." });
 
-        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption!.index);
+        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption.label);
 
         progress.report({ increment: 5, message: "Calling LLM..." });
 
@@ -167,4 +170,3 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         return;
     }
 });
-
