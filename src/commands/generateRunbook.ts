@@ -16,8 +16,8 @@ const ENDPOINT_ENUM_MAP = {
 const START_DOCKER_COMMAND = {
     'win32': 'Start-Process -NoNewWindow -Wait -FilePath "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
     'darwin': 'open -a Docker',
-    'linux': 'docker',
-}
+    'linux': 'systemctl --user start docker-desktop',
+};
 
 const DEFAULT_USER = "local-user";
 
