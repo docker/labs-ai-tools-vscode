@@ -84,7 +84,8 @@
       #_{:type "ollama" :title "model quantization with Ollama"}
       #_{:type "git_hooks" :title "set up my git hooks"}
       #_{:type "harmonia" :title "using harmonia to access gpus"}]
-     (:prompts (read-registry)))
+     (->> (:prompts (read-registry))
+          (map #(assoc % :saved true))))
 
     (= "register" (first args))
     (if-let [{:keys [owner repo path]} (git/parse-github-ref (second args))]
