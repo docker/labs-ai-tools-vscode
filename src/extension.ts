@@ -81,4 +81,27 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	void nativeClient.sendRequest("docker/markdown-blocks");
+
+	context.subscriptions.push(
+		vscode.languages.registerInlineCompletionItemProvider(
+			[{ language: "markdown" }],
+			{
+				provideInlineCompletionItems(
+					document: vscode.TextDocument,
+					position: vscode.Position,
+					context: vscode.InlineCompletionContext,
+				): vscode.ProviderResult<
+					vscode.InlineCompletionItem[] | vscode.InlineCompletionList
+				> {
+					return nativeClient.sendRequest("textDocument/inlineCompletion", {
+						context: {
+							uri: document.uri.toString(),
+							position: position,
+							triggerKind: context.triggerKind,
+						},
+					});
+				},
+			}
+		)
+	);
 }
