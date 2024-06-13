@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { prepareProjectPrompt } from "../utils/preparePrompt";
 import { verifyHasOpenAIKey } from "../extension";
 import { showPromptPicker } from "../utils/promptPicker";
+import { prepareRunbookFile } from "../utils/runbookFilename";
 
 // Must match package.json contributed configuration
 const ENDPOINT_ENUM_MAP = {
@@ -22,45 +23,6 @@ const START_DOCKER_COMMAND = {
 
 const DEFAULT_USER = "local-user";
 
-const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
-
-    let friendlyPromptName = promptType;
-
-    if (friendlyPromptName.startsWith("github:")) {
-        const repo = friendlyPromptName.split("github:")[1].split("?")[0].replace("/", "-");
-        const path = friendlyPromptName.split("path=")[1].split("&")[0].replaceAll("/", "-");
-        friendlyPromptName = `gh-${repo}:${path}`;
-    }
-
-    const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + `/runbook.${friendlyPromptName}.md`
-    );
-
-    try {
-        await vscode.workspace.fs.stat(uri);
-        const option = await vscode.window.showQuickPick([{ label: "Do nothing" }, { label: "Overwrite", detail: `Will delete ${uri.fsPath}` }], {
-            title: "Runbook already exists",
-            ignoreFocusOut: true,
-        });
-        if (!option || option.label === "Do nothing") {
-            return;
-        }
-        if (option.label === "Overwrite") {
-            await vscode.workspace.fs.delete(uri);
-        }
-    }
-    catch (e) {
-        // File does not exist
-    }
-
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
-
-    const doc = await vscode.workspace.openTextDocument(uri);
-
-    const editor = await vscode.window.showTextDocument(doc);
-
-    return { editor, doc };
-};
 
 export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
 

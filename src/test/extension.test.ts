@@ -3,6 +3,7 @@ import * as assert from 'assert';
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from 'vscode';
+import { generateFriendlyPromptName } from '../utils/runbookFilename';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -11,5 +12,10 @@ suite('Extension Test Suite', () => {
 	test('Sample test', () => {
 		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
 		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+	});
+
+	test('generateFriendlyPromptName', () => {
+		assert.strictEqual(generateFriendlyPromptName("github:docker/labs-make-runbook?ref=main&path=prompts/git_smoosh"), "gh-docker-labs-make-runbook:prompts-git_smoosh");
+		assert.strictEqual(generateFriendlyPromptName("npm"), "npm");
 	});
 });
