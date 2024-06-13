@@ -55,11 +55,6 @@
           "type": "string",
           "default": "vonwig/prompts:latest",
           "description": "Image tag used for prompt generation"
-        },
-        "docker.make-runbook.saved-prompts": {
-          "type": "array",
-          "default": [],
-          "description": "Saved prompts for reuse"
         }
       }
     },
