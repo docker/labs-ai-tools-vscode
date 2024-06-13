@@ -22,7 +22,7 @@ to test them.
 ```sh
 docker run --rm \
            -v /var/run/docker.sock:/var/run/docker.sock \
-           -v $PWD:/app/my_prompts \
+           --mount type=bind,source=$PWD,target=/app/my_prompts \
            --workdir /app
            vonwig/prompts:local $PWD \
                                 jimclark106 \
