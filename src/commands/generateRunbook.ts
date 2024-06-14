@@ -4,8 +4,10 @@ import {
 import { TextEncoder } from "util";
 import * as vscode from "vscode";
 import OpenAI from 'openai';
-import { prepareProjectPrompt, getPromptTypes } from "../utils/preparePrompt";
+import { prepareProjectPrompt } from "../utils/preparePrompt";
 import { verifyHasOpenAIKey } from "../extension";
+import { showPromptPicker } from "../utils/promptPicker";
+import { prepareRunbookFile } from "../utils/runbookFilename";
 
 // Must match package.json contributed configuration
 const ENDPOINT_ENUM_MAP = {
@@ -21,37 +23,6 @@ const START_DOCKER_COMMAND = {
 
 const DEFAULT_USER = "local-user";
 
-const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
-
-    const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + `/runbook.${promptType}.md`
-    );
-
-    try {
-        await vscode.workspace.fs.stat(uri);
-        const option = await vscode.window.showQuickPick([{ label: "Do nothing" }, { label: "Overwrite", detail: `Will delete ${uri.fsPath}` }], {
-            title: "Runbook already exists",
-            ignoreFocusOut: true,
-        });
-        if (!option || option.label === "Do nothing") {
-            return;
-        }
-        if (option.label === "Overwrite") {
-            await vscode.workspace.fs.delete(uri);
-        }
-    }
-    catch (e) {
-        // File does not exist
-    }
-
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
-
-    const doc = await vscode.workspace.openTextDocument(uri);
-
-    const editor = await vscode.window.showTextDocument(doc);
-
-    return { editor, doc };
-};
 
 export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
 
@@ -119,9 +90,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         await verifyHasOpenAIKey(secrets, true);
     }
 
-    const promptTypes = getPromptTypes();
-
-    const promptOption = await vscode.window.showQuickPick(promptTypes.map(f => ({ label: f.title, detail: f.title, index: f.type })), { title: "Select prompt type", ignoreFocusOut: true });
+    const promptOption = await showPromptPicker();
 
     if (!promptOption) {
         return;
@@ -129,7 +98,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
     let apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption!.index) || {});
+    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption.id) || {});
 
     if (!editor || !doc) {
         return;
@@ -148,12 +117,18 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         let Username = DEFAULT_USER;
 
         if (auth.stdout.toString().startsWith("{") && auth.status === 0 && !auth.error) {
-            const authPayload = JSON.parse(auth.stdout.toString()) as {
-                "ServerURL": string,
-                "Username": string,
-                "Secret": string
-            };
-            Username = authPayload.Username;
+            try {
+                const authPayload = JSON.parse(auth.stdout.toString()) as {
+                    "ServerURL": string,
+                    "Username": string,
+                    "Secret": string
+                };
+                Username = authPayload.Username;
+            }
+            catch (e) {
+                throw new Error(`Expected JSON from docker-credential-desktop, got STDOUT: ${auth.stdout.toString()} STDERR: ${auth.stderr.toString()} ERR: ${(auth.error || "N/A").toString()}`);
+            }
+
         }
 
         progress.report({ increment: 5, message: "Starting LLM ..." });
@@ -165,7 +140,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
         progress.report({ increment: 5, message: "Preparing payload..." });
 
-        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption!.index);
+        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption.id);
 
         progress.report({ increment: 5, message: "Calling LLM..." });
 
@@ -201,4 +176,3 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         return;
     }
 });
-

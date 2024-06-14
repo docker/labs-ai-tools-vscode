@@ -70,6 +70,14 @@
       {
         "command": "docker.make-runbook.set-openai-api-key",
         "title": "Set OpenAI API key for Docker Make Runbook"
+      },
+      {
+        "command": "docker.make-runbook.save-prompt",
+        "title": "Save a runbook prompt"
+      },
+      {
+        "command": "docker.make-runbook.delete-prompt",
+        "title": "Delete a saved runbook prompt"
       }
     ]
   },

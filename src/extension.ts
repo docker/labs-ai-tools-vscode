@@ -4,6 +4,8 @@ import { generateRunbook } from './commands/generateRunbook';
 import { runHotCommand } from './commands/runHotCommand';
 import { setOpenAIKey } from './commands/setOpenAIKey';
 import { nativeClient } from './utils/lsp';
+import { deletePrompt, savePrompt } from './commands/manageSavedPrompts';
+import { spawnSync } from 'child_process';
 
 export const workspaceCommands = {} as {
 	[id: string]:
@@ -47,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(setOpenAIKeyCommand);
 
+	spawnSync('docker', ['pull', "vonwig/prompts:latest"]);
 
 	let makeRunbook = vscode.commands.registerCommand('docker.make-runbook.generate', () => generateRunbook(context.secrets));
 
@@ -55,6 +58,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	let runBoundCommands = vscode.commands.registerCommand('docker.make-runbook.run', runHotCommand);
 
 	context.subscriptions.push(runBoundCommands);
+
+	let savePromptCommand = vscode.commands.registerCommand('docker.make-runbook.save-prompt', savePrompt);
+
+	context.subscriptions.push(savePromptCommand);
+
+	let deletePromptCommand = vscode.commands.registerCommand('docker.make-runbook.delete-prompt', deletePrompt);
+
+	context.subscriptions.push(deletePromptCommand);
 
 	if (vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') === 'OpenAI') {
 		void verifyHasOpenAIKey(context.secrets);
