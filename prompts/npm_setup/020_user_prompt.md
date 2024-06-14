@@ -20,7 +20,6 @@ If you see that I have a yarn.lock, please use `yarn` in place of npm commands.
   The project does not have a node root, so help me run `npm init`
 {{/project.node_roots}}
 
+--- End Project ---
+
 Please generate a runbook for me.
-
-
-

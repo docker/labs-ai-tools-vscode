@@ -96,10 +96,6 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         return;
     }
 
-    if (!promptOption) {
-        return;
-    }
-
     let apiKey = await secrets.get("openAIKey");
 
     const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption.id) || {});

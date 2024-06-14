@@ -1,6 +1,73 @@
 import { QuickPickItem, QuickPickItemKind, ThemeIcon, commands, window, workspace } from "vscode";
 import { getPromptTypes } from "./preparePrompt";
 
+// https://github.com/owner/repo/tree/ref/path
+// https://github.com/docker/labs-make-runbook/tree/main/prompts/docker
+const GitHubURLPattern = /https:\/\/github.com\/(.*)\/(.*)\/tree\/(.*)/;
+// github:owner/repo?ref=main&path=prompts/dir
+const GitHubRefPattern = /github:(.*)\/(.*)\?ref=(.*)/;
+
+class GitHubRef {
+    constructor(owner: string, repo: string, ref: string, args: Record<string, string>) {
+        this.owner = owner;
+        this.repo = repo;
+        this.ref = ref;
+        this.args = args;
+    }
+    owner: string;
+    repo: string;
+    ref: string;
+    args: Record<string, string>;
+    toURL() {
+        return `https://github.com/${this.owner}/${this.repo}/tree/${this.ref}?${Object.entries(this.args).map(([k, v]) => `${k}=${v}`).join("&")}`;
+    }
+    toRef() {
+        return `github:${this.owner}/${this.repo}?ref=${this.ref}&${Object.entries(this.args).map(([k, v]) => `${k}=${v}`).join("&")}`;
+    }
+    toString() {
+        return `Repo: <${this.owner}/${this.repo}> Ref: <${this.ref}> Args: <${Object.entries(this.args).map(([key, val]) => `${key}=${val}`).join(',')}>`
+    }
+}
+
+export const parseGitHubURL = (url: string) => {
+    const githubURLMatch = url.match(GitHubURLPattern);
+    if (githubURLMatch) {
+        const [, owner, repo, refPart] = githubURLMatch;
+        const [ref, ...pathAndArgs] = refPart.split("/");
+        const pathAndArgsStr = pathAndArgs.join("/");
+
+        let path: string;
+        let args: string[] = [];
+        if (!pathAndArgsStr.includes("?")) {
+            args = [];
+            path = pathAndArgsStr;
+        }
+        else {
+            let argPart = "";
+            [path, argPart] = pathAndArgsStr.split("?");
+            args = argPart.split("&");
+        }
+
+        const keyVals = args.map(a => ({ [a.split("=")[0]]: a.split("=")[1] }));
+        keyVals.push({ path });
+
+        return new GitHubRef(owner, repo, ref, Object.assign({}, ...keyVals));
+    }
+    return undefined;
+};
+
+export const parseGitHubRef = (ref: string) => {
+    const githubRefMatch = ref.match(GitHubRefPattern);
+    if (githubRefMatch) {
+        const [, owner, repo, refPart] = githubRefMatch;
+        let [ref, ...args] = refPart.split("&");
+        const keyVals = args.map(a => ({ [a.split("=")[0]]: a.split("=")[1] }));
+        return new GitHubRef(owner, repo, ref, Object.assign({}, ...keyVals));
+    };
+
+    return undefined;
+};
+
 export interface PromptTypeOption extends QuickPickItem {
     id: string;
     saved?: boolean;
@@ -9,24 +76,23 @@ export interface PromptTypeOption extends QuickPickItem {
 export const showPromptPicker = (skipBuiltins = false) =>
     new Promise<PromptTypeOption | undefined>((resolve) => {
         let promptTypeItems: PromptTypeOption[] = [];
-
+        if (!skipBuiltins) {
+            const promptTypes = getPromptTypes();
+            promptTypeItems = promptTypes.map(f => (
+                {
+                    label: f.title,
+                    detail: `Generate runbook to use ${f.type} in this project`,
+                    id: f.type,
+                    description: "Built-in",
+                    buttons: f.saved ? [{
+                        iconPath: new ThemeIcon('trash'),
+                        tooltip: 'Delete saved command'
+                    }] : undefined,
+                    saved: f.saved
+                }
+            ));
+        }
         const getDefaultItems = () => {
-            if (!skipBuiltins) {
-                const promptTypes = getPromptTypes();
-                promptTypeItems = promptTypes.map(f => (
-                    {
-                        label: f.title,
-                        detail: `Generate runbook to use ${f.type} in this project`,
-                        id: f.type,
-                        description: "Built-in",
-                        buttons: f.saved ? [{
-                            iconPath: new ThemeIcon('trash'),
-                            tooltip: 'Delete saved command'
-                        }] : undefined,
-                        saved: f.saved
-                    }
-                ));
-            }
             const defaultItems = [
                 {
                     kind: QuickPickItemKind.Separator,
@@ -50,32 +116,52 @@ export const showPromptPicker = (skipBuiltins = false) =>
         quickPick.title = "Select runbook type";
         quickPick.ignoreFocusOut = true;
         quickPick.onDidChangeValue((val) => {
-            // github:owner/repo?ref=main&path=prompts/dir
-            if (val.startsWith("github:")) {
-                try {
-                    const ghref = val.split("github:")[1];
-                    const [ownerRepo, query] = ghref.split("?").length > 1 ? ghref.split("?") : ["org-or-user/repo", "ref=unset&path=your/prompts/dir"];
-                    const [owner, repo] = ownerRepo.split("/");
-                    const [ref, ...args] = query.split("&");
-                    quickPick.items = [{
-                        id: val,
-                        label: "GitHub Ref", // Label must be val for quickpick to work properly
-                        detail: `Repo: <${owner}/${repo}> Ref: <${ref.split('=')[1]}> Args: <${args.join("&")}>`, // Detail must be val for consistency
-                        description: "github:owner/repo?ref=main&path=your/prompts/dir",
-                        alwaysShow: true,
-                        // Button for saving command to workspace config
-                        buttons: skipBuiltins ? [] : [{
-                            iconPath: new ThemeIcon('save'),
-                            tooltip: 'Save command to workspace configuration'
-                        }]
-                    }];
-                }
-                catch (e) {
-                    window.showErrorMessage(`Error parsing ${val}: ${e}`);
-                }
+            const githubRefMatch = val.match(GitHubRefPattern);
+            const githubURLMatch = val.match(GitHubURLPattern);
+            if (githubRefMatch) {
+                const ref = parseGitHubRef(val)!;
+                quickPick.items = [{
+                    id: ref.toRef(),
+                    label: "GitHub Ref", // Label must be val for quickpick to work properly
+                    detail: ref.toString(), // Detail must be val for consistency
+                    description: "github:owner/repo?ref=main&path=your/prompts/dir",
+                    alwaysShow: true,
+                    // Button for saving command to workspace config
+                    buttons: skipBuiltins ? [] : [{
+                        iconPath: new ThemeIcon('save'),
+                        tooltip: 'Save command to workspace configuration'
+                    }]
+                }];
+            }
+            //https://github.com/docker/labs-make-runbook/tree/main/prompts/npm_setup
+            else if (githubURLMatch) {
+                const ref = parseGitHubURL(val)!;
+                quickPick.items = [{
+                    id: ref.toRef(),
+                    label: "GitHub URL", // Label must be val for quickpick to work properly
+                    detail: ref.toString(), // Detail must be val for consistency
+                    description: "Parsed GitHub URL",
+                    alwaysShow: true,
+                    // Button for saving command to workspace config
+                    buttons: skipBuiltins ? [] : [{
+                        iconPath: new ThemeIcon('save'),
+                        tooltip: 'Save command to workspace configuration'
+                    }]
+                }];
             }
             else {
-                quickPick.items = getDefaultItems();
+                if (val.startsWith('github:') || val.startsWith('https://github.com')) {
+                    quickPick.items = [{
+                        id: val,
+                        label: "Invalid GitHub Ref",
+                        detail: "Please enter a valid GitHub ref or URL",
+                        description: "github:owner/repo?ref=main&path=your/prompts/dir",
+                        alwaysShow: true,
+                    }];
+                }
+                else {
+                    quickPick.items = getDefaultItems();
+                }
             }
         });
         quickPick.onDidAccept(() => {
