@@ -19,13 +19,13 @@ class GitHubRef {
     ref: string;
     args: Record<string, string>;
     toURL() {
-        return `https://github.com/${this.owner}/${this.repo}/tree/${this.ref}?${Object.entries(this.args).map(([k, v]) => `${k}=${v}`).join("&")}`;
+        return `https://github.com/${this.owner}/${this.repo}/tree/${this.ref}/${this.args.path}${this.args.length ? '?' : ''}${Object.entries(this.args).filter(([k]) => k !== 'path').map(([k, v]) => `${k}=${v}`).join("&")}`;
     }
     toRef() {
         return `github:${this.owner}/${this.repo}?ref=${this.ref}&${Object.entries(this.args).map(([k, v]) => `${k}=${v}`).join("&")}`;
     }
     toString() {
-        return `Repo: <${this.owner}/${this.repo}> Ref: <${this.ref}> Args: <${Object.entries(this.args).map(([key, val]) => `${key}=${val}`).join(',')}>`
+        return `Repo: <${this.owner}/${this.repo}> Ref: <${this.ref}> Args: <${Object.entries(this.args).map(([key, val]) => `${key}=${val}`).join(',')}>`;
     }
 }
 
@@ -49,7 +49,10 @@ export const parseGitHubURL = (url: string) => {
         }
 
         const keyVals = args.map(a => ({ [a.split("=")[0]]: a.split("=")[1] }));
-        keyVals.push({ path });
+
+        if (path) {
+            keyVals.push({ path });
+        }
 
         return new GitHubRef(owner, repo, ref, Object.assign({}, ...keyVals));
     }
@@ -58,6 +61,7 @@ export const parseGitHubURL = (url: string) => {
 
 export const parseGitHubRef = (ref: string) => {
     const githubRefMatch = ref.match(GitHubRefPattern);
+
     if (githubRefMatch) {
         const [, owner, repo, refPart] = githubRefMatch;
         let [ref, ...args] = refPart.split("&");
