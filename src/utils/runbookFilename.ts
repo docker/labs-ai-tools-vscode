@@ -6,7 +6,7 @@ export const generateFriendlyPromptName = (promptType: string) => {
     if (friendlyPromptName.startsWith("github:")) {
         const repo = friendlyPromptName.split("github:")[1].split("?")[0].replace("/", "-");
         const path = friendlyPromptName.split("path=")[1].split("&")[0].replaceAll("/", "-");
-        friendlyPromptName = `gh-${repo}:${path}`;
+        friendlyPromptName = `gh-${repo}-${path || 'root'}`;
     }
 
     return friendlyPromptName;
