@@ -1,6 +1,6 @@
 { lib, python3Packages, fetchFromGitHub, clipboard }:
 with python3Packages;
-buildPythonPackage rec {
+buildPythonApplication rec {
   pname = "codescope";
   version = "0.1.0";
   src = fetchFromGitHub {
