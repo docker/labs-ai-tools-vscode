@@ -46,3 +46,5 @@ echo "extends:\n  - recommended/config\n  - recommended/config/style-guide" > .e
 ```sh
 npx --no-install eslint .
 ```
+
+Your runbooks should be adjusted for the user's project but overall match that format.
