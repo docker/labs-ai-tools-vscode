@@ -1,4 +1,6 @@
-Hi, I'm {{Username}} and I'm on {{platform}} architecture.
+Hi, I need a runbook to get started with eslint.
+
+I'm on {{platform}} architecture.
 
 My project files are:
 
@@ -17,4 +19,4 @@ I have the following node roots:
   Actually, the project does not have a node root, so help me run `npm init`
 {{/project.node_roots}}
 
-Can you set me up with eslint here?
+Can you help?
