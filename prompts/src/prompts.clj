@@ -7,9 +7,11 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :as string]
    [docker]
-   [git :as git]
+   [git]
+   [openai]
    [markdown.core :as markdown]
    [medley.core :as medley]
+   [selmer.parser :as selmer]
    [pogonos.core :as stache]))
 
 (defn- facts [project-facts user platform]
@@ -38,13 +40,35 @@
 (defn- merge-role [[m f]]
   (merge m {:role (let [[_ role] (re-find prompt-file-pattern (fs/file-name f))] role)}))
 
+(defn warn [template data]
+  (binding [*out* *err*]
+    (println
+     (selmer/render template data))))
+
 (defn fact-reducer [dir m container-definition]
   (try
     (medley/deep-merge
      m
-     (docker/extract-facts container-definition dir))
-    (catch Throwable _
+     (let [facts (docker/extract-facts container-definition dir)]
+       (case (:output-handler container-definition)
+         "linguist" (->> (json/parse-string facts keyword) vals (into []) (assoc {} :linguist))
+         (json/parse-string facts keyword))))
+    (catch Throwable ex
+      (warn
+       "unable to render {{ container-definition }} - {{ exception }}"
+       {:dir dir
+        :container-definition container-definition
+        :exception ex})
       m)))
+
+(comment
+  (facts
+   (fact-reducer "/Users/slim/docker/labs-make-runbook"
+                 {}
+                 {:image "vonwig/go-linguist:latest"
+                  :command ["-json"]
+                  :output-handler "linguist"})
+   "jimclark106" "darwin"))
 
 (defn collect-extractors [dir]
   (let [extractors (-> (markdown/parse-metadata (io/file dir "README.md")) first :extractors)]
@@ -55,6 +79,20 @@
         :command ["project-facts"
                   "--vs-machine-id" "none"
                   "--workspace" "/docker"]}])))
+
+(defn collect-functions [dir]
+  (->>
+    (-> (markdown/parse-metadata (io/file dir "README.md")) first :functions)
+    (map (fn [m] {:type "function" :function m}))))
+
+(defn collect-metadata [dir]
+  (dissoc
+    (-> (markdown/parse-metadata (io/file dir "README.md")) first)
+    :extractors :functions))
+
+(comment
+  ;; TODO - it can be hard to debug if there's no metadata
+  (markdown/parse-metadata (io/file "git_hooks" "README.md")))
 
 (defn all-facts [project-root dir]
   (reduce (partial fact-reducer project-root) {} (collect-extractors dir)))
@@ -74,16 +112,33 @@
 (defn update-registry [f]
   (spit registry-file (pr-str (f (read-registry)))))
 
+(defn get-prompts [& args]
+  (let [[project-root user platform dir] args
+        ;; TODO the docker default no longer makes sense here
+        prompt-dir (or
+                    (when (string/starts-with? dir "github") (git/prompt-dir dir))
+                    dir
+                    "docker")
+        m (all-facts project-root prompt-dir)
+        renderer (partial selma-render (facts m user platform))
+        prompts (->> (fs/list-dir prompt-dir)
+                     (filter (name-matches prompt-file-pattern))
+                     (sort-by fs/file-name)
+                     (into []))]
+    (map (comp merge-role renderer fs/file) prompts)))
+
+(comment
+  (collect-extractors "git_hooks")
+  (all-facts "/Users/slim/docker/labs-make-runbook" "git_hooks")
+  (get-prompts "/Users/slim/docker/labs-make-runbook" "jimclark106" "darwin" "git_hooks"))
+
 (defn- -prompts [& args]
   (cond
     (= "prompts" (first args))
     (concat
      [{:type "docker" :title "using docker in my project"}
       {:type "lazy_docker" :title "using lazy-docker"}
-      {:type "npm_setup" :title "using npm"}
-      #_{:type "ollama" :title "model quantization with Ollama"}
-      #_{:type "git_hooks" :title "set up my git hooks"}
-      #_{:type "harmonia" :title "using harmonia to access gpus"}]
+      {:type "npm_setup" :title "using npm"}]
      (->> (:prompts (read-registry))
           (map #(assoc % :saved true))))
 
@@ -98,28 +153,33 @@
       (throw (ex-info "Bad GitHub ref" {:ref (second args)})))
 
     (= "unregister" (first args))
-    (update-registry 
-      (fn [m] 
-        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
+    (update-registry
+     (fn [m]
+       (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
+
+    (= "run" (first args))
+    (let [m (collect-metadata (last args))]
+      (openai/openai 
+        (merge 
+          {:messages (apply get-prompts (rest args))}
+          (when-let [functions (collect-functions (last args))]
+            (when (seq functions) {:tools functions}))
+          m) 
+        (if (= "required" (:tool_choice m))
+          openai/print-functions
+          openai/print-chunk)))
 
     :else
-    (let [[project-root user platform dir] args
-          ;; TODO the docker default no longer makes sense here
-          prompt-dir (or
-                      (when (string/starts-with? dir "github") (git/prompt-dir dir))
-                      dir
-                      "docker")
-          m (all-facts project-root prompt-dir)
-          renderer (partial selma-render (facts m user platform))
-          prompts (->> (fs/list-dir prompt-dir)
-                       (filter (name-matches prompt-file-pattern))
-                       (sort-by fs/file-name)
-                       (into []))]
-      (map (comp merge-role renderer fs/file) prompts))))
+    (apply get-prompts args)))
 
 (comment
-  (pprint
-   (-prompts "/Users/slim/docker/labs-make-runbook" "jimclark106" "darwin" "github:docker/labs-make-runbook?ref=main&path=prompts/docker")))
+  (openai/openai
+   (-prompts
+    "/Users/slim/docker/labs-make-runbook"
+    "jimclark106"
+    "darwin"
+    "docker")
+   openai/print-chunk))
 
 (defn prompts [& args]
   (println
@@ -134,7 +194,8 @@
     (apply prompts args)
     (catch Throwable t
       (binding [*out* *err*]
-        (println "Error:" (.getMessage t))
+        (println t)
+        (println "vonwig/prompts Error: " (.getMessage t))
         (System/exit 1)))))
 
 (comment

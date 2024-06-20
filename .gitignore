@@ -6,3 +6,8 @@ node_modules
 /.clj-kondo/
 /.lsp/
 /prompts/prompts.jar
+/prompts/codescope/.direnv/
+/prompts/codescope/result
+/prompts/functions/write_file/.direnv/
+/prompts/functions/write_file/result
+/prompts/functions/write_file/blah.txt

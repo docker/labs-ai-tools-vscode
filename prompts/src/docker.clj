@@ -23,7 +23,8 @@
                    :Tty true}
                   (when host-dir {:HostConfig
                                   {:Binds [(format "%s:/project:ro" host-dir)
-                                           "docker-lsp:/docker"]}})
+                                           "docker-lsp:/docker"]}
+                                  :WorkingDir "/project"})
                   (when entrypoint {:Entrypoint entrypoint})
                   (when command {:Cmd command})))]
     (curl/post
@@ -87,17 +88,20 @@
 (comment
   (def prompt-container (create {:image "vonwig/git-smoosh:local"})))
 
-(defn extract-facts [container host-dir]
-  (pull container)
+(defn run-function [container host-dir]
+  #_(pull container)
   (let [x (create (assoc container :host-dir host-dir))]
     (start x)
     (wait x)
-    (let [json-string (:body (attach x))]
+    (let [s (:body (attach x))]
       (delete x)
-      (json/parse-string json-string keyword))))
+      s)))
+
+(def extract-facts run-function)
 
 (comment
   (pprint (json/parse-string (extract-facts sample "/Users/slim/docker/genai-stack") keyword))
+  (extract-facts {:image "vonwig/go-linguist:latest" :command ["-json"]} "/Users/slim/docker/labs-make-runbook")
   (pprint
    (json/parse-string
     (extract-facts

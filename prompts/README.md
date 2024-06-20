@@ -70,7 +70,8 @@ expressions documented [here](https://github.com/yogthos/Selmer) are supported.
 ## Building
 
 ```sh
-#docker:command=builds
+#docker:command=build
+
 docker build -t vonwig/prompts:local -f Dockerfile .
 ```
 
