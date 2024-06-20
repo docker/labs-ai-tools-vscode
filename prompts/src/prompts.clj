@@ -4,15 +4,14 @@
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.pprint :refer [pprint]]
    [clojure.string :as string]
    [docker]
    [git]
-   [openai]
    [markdown.core :as markdown]
    [medley.core :as medley]
-   [selmer.parser :as selmer]
-   [pogonos.core :as stache]))
+   [openai]
+   [pogonos.core :as stache]
+   [selmer.parser :as selmer]))
 
 (defn- facts [project-facts user platform]
   (medley/deep-merge
@@ -112,13 +111,16 @@
 (defn update-registry [f]
   (spit registry-file (pr-str (f (read-registry)))))
 
+(defn- get-dir [dir]
+  (or
+    (when (string/starts-with? dir "github") (git/prompt-dir dir))
+    dir
+    "docker"))
+
 (defn get-prompts [& args]
   (let [[project-root user platform dir] args
         ;; TODO the docker default no longer makes sense here
-        prompt-dir (or
-                    (when (string/starts-with? dir "github") (git/prompt-dir dir))
-                    dir
-                    "docker")
+        prompt-dir (get-dir dir)
         m (all-facts project-root prompt-dir)
         renderer (partial selma-render (facts m user platform))
         prompts (->> (fs/list-dir prompt-dir)
@@ -158,11 +160,11 @@
        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
 
     (= "run" (first args))
-    (let [m (collect-metadata (last args))]
+    (let [m (collect-metadata (get-dir (last args)))]
       (openai/openai 
         (merge 
           {:messages (apply get-prompts (rest args))}
-          (when-let [functions (collect-functions (last args))]
+          (when-let [functions (collect-functions (get-dir (last args)))]
             (when (seq functions) {:tools functions}))
           m) 
         (if (= "required" (:tool_choice m))

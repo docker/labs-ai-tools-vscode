@@ -27,4 +27,4 @@ COPY npm_setup npm_setup
 COPY lazy_docker lazy_docker
 
 # Can't be shell form because we need to pass JSON as an arg
-ENTRYPOINT [ "bb", "prompts.jar" ]
+ENTRYPOINT [ "bb", "/app/prompts.jar" ]
