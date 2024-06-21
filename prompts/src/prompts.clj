@@ -11,7 +11,9 @@
    [medley.core :as medley]
    [openai]
    [pogonos.core :as stache]
-   [selmer.parser :as selmer]))
+   [clojure.pprint :refer [pprint]]
+   [selmer.parser :as selmer]
+   [clojure.tools.cli :as cli]))
 
 (defn- facts [project-facts user platform]
   (medley/deep-merge
@@ -44,11 +46,18 @@
     (println
      (selmer/render template data))))
 
-(defn fact-reducer [dir m container-definition]
+(defn fact-reducer 
+  "reduces into m using a container function
+     params
+       dir - the host dir that the container will mount read-only at /project
+       identity-token - a DockerHub identity token
+       m - the map to merge into
+       container-definition - the definition for the function"
+  [dir identity-token m container-definition]
   (try
     (medley/deep-merge
      m
-     (let [facts (docker/extract-facts container-definition dir)]
+     (let [facts (docker/extract-facts (assoc container-definition :host-dir dir :identity-token identity-token))]
        (case (:output-handler container-definition)
          "linguist" (->> (json/parse-string facts keyword) vals (into []) (assoc {} :linguist))
          (json/parse-string facts keyword))))
@@ -63,6 +72,7 @@
 (comment
   (facts
    (fact-reducer "/Users/slim/docker/labs-make-runbook"
+                 ""
                  {}
                  {:image "vonwig/go-linguist:latest"
                   :command ["-json"]
@@ -89,16 +99,21 @@
     (-> (markdown/parse-metadata (io/file dir "README.md")) first)
     :extractors :functions))
 
-(comment
-  ;; TODO - it can be hard to debug if there's no metadata
-  (markdown/parse-metadata (io/file "git_hooks" "README.md")))
+(defn all-facts 
+  "returns a map of extracted *math-context*
+     params
+       project-root - the host project root dir
+       identity-token - a valid Docker login auth token
+       dir - a prompst directory with a valid README.md"
+  [project-root identity-token dir]
+  (reduce (partial fact-reducer project-root identity-token) {} (collect-extractors dir)))
 
-(defn all-facts [project-root dir]
-  (reduce (partial fact-reducer project-root) {} (collect-extractors dir)))
-
+;; registry of prompts directories stores in the docker-prompts volumes
 (def registry-file "/prompts/registry.edn")
 
-(defn read-registry []
+(defn read-registry 
+  "read the from the prompt registry in the current engine volume"
+  []
   (try
     (edn/read-string (slurp registry-file))
     (catch java.io.FileNotFoundException _
@@ -108,20 +123,24 @@
         (println "Warning (corrupt registry.edn): " (.getMessage t)))
       {:prompts []})))
 
-(defn update-registry [f]
+(defn update-registry 
+  "update the prompt registry in the current engine volume"
+  [f]
   (spit registry-file (pr-str (f (read-registry)))))
 
-(defn- get-dir [dir]
+(defn- get-dir 
+  "returns the prompt directory to use"
+  [dir]
   (or
     (when (string/starts-with? dir "github") (git/prompt-dir dir))
     dir
     "docker"))
 
 (defn get-prompts [& args]
-  (let [[project-root user platform dir] args
+  (let [[project-root user platform dir & {:keys [identity-token]}] args
         ;; TODO the docker default no longer makes sense here
         prompt-dir (get-dir dir)
-        m (all-facts project-root prompt-dir)
+        m (all-facts project-root identity-token prompt-dir)
         renderer (partial selma-render (facts m user platform))
         prompts (->> (fs/list-dir prompt-dir)
                      (filter (name-matches prompt-file-pattern))
@@ -129,12 +148,12 @@
                      (into []))]
     (map (comp merge-role renderer fs/file) prompts)))
 
-(comment
-  (collect-extractors "git_hooks")
-  (all-facts "/Users/slim/docker/labs-make-runbook" "git_hooks")
-  (get-prompts "/Users/slim/docker/labs-make-runbook" "jimclark106" "darwin" "git_hooks"))
+(defn function-handler [function-name m]
+  (println function-name)
+  (println m))
 
-(defn- -prompts [& args]
+(defn- -run-command 
+  [& args]
   (cond
     (= "prompts" (first args))
     (concat
@@ -167,45 +186,35 @@
           (when-let [functions (collect-functions (get-dir (last args)))]
             (when (seq functions) {:tools functions}))
           m) 
-        (if (= "required" (:tool_choice m))
-          openai/print-functions
-          openai/print-chunk)))
+        (partial openai/chunk-handler function-handler)))
 
     :else
     (apply get-prompts args)))
 
-(comment
-  (openai/openai
-   (-prompts
-    "/Users/slim/docker/labs-make-runbook"
-    "jimclark106"
-    "darwin"
-    "docker")
-   openai/print-chunk))
-
 (defn prompts [& args]
   (println
-   (json/generate-string (apply -prompts args))))
+   (json/generate-string (apply -run-command args))))
 
-(comment
-  (-> (markdown/parse-metadata (io/file "docker/README.md")) first :extractors first keys)
-  (markdown/md-to-meta (slurp (io/file "crap.md"))))
+(def cli-opts [[nil "--identity-token TOKEN" "IDENTITY-TOKEN"]])
 
 (defn -main [& args]
   (try
-    (apply prompts args)
+    (let [{:keys [arguments options]} (cli/parse-opts args cli-opts)]
+      ;; positional args are
+      ;;   host-project-root user platform prompt-dir-or-github-ref & {opts}
+      (apply prompts (concat 
+                       arguments
+                       (when (:identity-token options)
+                         [:identity-token (:identity-token options)]))))
     (catch Throwable t
-      (binding [*out* *err*]
-        (println t)
-        (println "vonwig/prompts Error: " (.getMessage t))
-        (System/exit 1)))))
+      (warn "Error: {{ exception }}" {:exception t})
+      (System/exit 1))))
 
 (comment
-  (collect-extractors "npm")
-  (all-facts "/Users/slim/docker/labs-make-runbook/" "npm_setup")
-  (->> (-prompts "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm_setup")
+  (collect-extractors "docker")
+  (->> (-run-command "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm_setup")
        (map :content)
        (map println))
-  (->> (-prompts "/Users/slim/docker/genai-stack/" "jimclark106" "darwin" "docker")
+  (->> (-run-command "/Users/slim/docker/genai-stack/" "jimclark106" "darwin" "docker")
        (map :content)
        (map println)))

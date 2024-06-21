@@ -2,12 +2,18 @@
   (:require
    [babashka.curl :as curl]
    [cheshire.core :as json]
-   [clojure.pprint :refer [pprint]]))
+   [clojure.pprint :refer [pprint]]) 
+  (:import
+   [java.util Base64]))
 
-(defn pull-image [{:keys [image]}]
+(defn encode [to-encode]
+  (.encodeToString (Base64/getEncoder) (.getBytes to-encode)))
+
+(defn pull-image [{:keys [image identity-token]}]
   (curl/post
    (format "http://localhost/images/create?fromImage=%s" image)
-   {:raw-args ["--unix-socket" "/var/run/docker.sock"]}))
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]
+    :headers {"X-Registry-Auth" (encode (json/generate-string {:identity-token identity-token}))}}))
 
 (defn container->archive [{:keys [Id path]}]
   (curl/get
@@ -79,18 +85,10 @@
                        "--vs-machine-id" "none"
                        "--workspace" "/docker"]})
 
-(defn extract-prompts [container]
-  (let [x (create container)
-        response (get-archive (assoc x :path "/prompts"))]
-    ;; stream archive to file
-    (delete x)))
-
-(comment
-  (def prompt-container (create {:image "vonwig/git-smoosh:local"})))
-
-(defn run-function [container host-dir]
-  #_(pull container)
-  (let [x (create (assoc container :host-dir host-dir))]
+(defn run-function [m]
+  (when (:identity-token m)
+    (pull m))
+  (let [x (create m)]
     (start x)
     (wait x)
     (let [s (:body (attach x))]
@@ -100,12 +98,12 @@
 (def extract-facts run-function)
 
 (comment
-  (pprint (json/parse-string (extract-facts sample "/Users/slim/docker/genai-stack") keyword))
-  (extract-facts {:image "vonwig/go-linguist:latest" :command ["-json"]} "/Users/slim/docker/labs-make-runbook")
+  (pprint (json/parse-string (extract-facts (assoc sample :host-dir "/Users/slim/docker/genai-stack")) keyword))
+  (extract-facts {:image "vonwig/go-linguist:latest" :command ["-json"] :host-dir "/Users/slim/docker/labs-make-runbook"})
   (pprint
    (json/parse-string
-    (extract-facts
-     {:image "vonwig/extractor-node:latest"}
-     "/Users/slim/docker/labs-make-runbook")
+     (extract-facts
+       {:image "vonwig/extractor-node:latest"
+        :host-dir "/Users/slim/docker/labs-make-runbook"})
     keyword)))
 
