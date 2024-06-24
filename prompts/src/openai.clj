@@ -7,10 +7,11 @@
 
 (defn openai-api-key []
   (try
-    (string/trim (slurp "/Users/slim/.openai-api-key"))
+    (string/trim (slurp (io/file (System/getenv "HOME") ".openai-api-key")))
     (catch Throwable _ nil)))
 
 (defn openai [request cb]
+  (println "## ROLE assistant")
   (let [response
         (http/post
          "https://api.openai.com/v1/chat/completions"
@@ -29,10 +30,7 @@
         (cb (slurp (:body response)))
         (doseq [chunk (line-seq (io/reader (:body response)))]
           (cb chunk)))
-      (do
-        (println response)
-        (println (slurp (:body response)))
-        (throw (ex-info "Failed to call OpenAI API" response))))))
+      (throw (ex-info "Failed to call OpenAI API" response)) )))
 
 (defn chunk-handler [function-handler chunk]
   (let [{:keys [delta message _finish_reason _role]}
@@ -48,8 +46,27 @@
                 (print (:content delta))
                 (flush))
         message (let [coll (:tool_calls message)]
-                  (doseq [{{:keys [arguments] function-name :name} :function} coll]
-                    (function-handler function-name (json/parse-string arguments true)))))
+                  (doseq [{{:keys [arguments] function-name :name} :function function-id :id} coll]
+                    (println (format "... calling %s" function-name))
+                    (function-handler
+                      function-name
+                      (json/parse-string arguments true)
+                      {:resolve
+                       (fn [output]
+                         (println (format "## ROLE tool\n%s" output))
+                         ;; add message with output to the conversation and call complete again
+                         ;; add the assistant message that requested the tool be called
+                         ;; {:tool_calls [] :role "assistant" :name "optional"}
+                         ;; also ad the tool message with the response from the tool
+                         ;; {:content "" :role "tool" :tool_call_id ""}
+
+                         ;; this is also where we need to trampoline because we are potentially in a loop here
+                         ;; in some ways we should probably just create channels and call these threads anyway
+                         ;; I don't know how much we need a formal assistant api to make progress
+
+                         )
+                       :fail (fn [output]
+                               (println (format "## ROLE tool\n function call %s failed %s" function-name output)))}))))
       (catch Throwable _))))
 
 (comment

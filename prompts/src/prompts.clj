@@ -46,7 +46,7 @@
     (println
      (selmer/render template data))))
 
-(defn fact-reducer 
+(defn fact-reducer
   "reduces into m using a container function
      params
        dir - the host dir that the container will mount read-only at /project
@@ -57,10 +57,11 @@
   (try
     (medley/deep-merge
      m
-     (let [facts (docker/extract-facts (assoc container-definition :host-dir dir :identity-token identity-token))]
-       (case (:output-handler container-definition)
-         "linguist" (->> (json/parse-string facts keyword) vals (into []) (assoc {} :linguist))
-         (json/parse-string facts keyword))))
+     (let [{:keys [pty-output exit-code]} (docker/extract-facts (assoc container-definition :host-dir dir :identity-token identity-token))]
+       (when (= 0 exit-code)
+         (case (:output-handler container-definition)
+           "linguist" (->> (json/parse-string pty-output keyword) vals (into []) (assoc {} :linguist))
+           (json/parse-string pty-output keyword)))))
     (catch Throwable ex
       (warn
        "unable to render {{ container-definition }} - {{ exception }}"
@@ -91,15 +92,15 @@
 
 (defn collect-functions [dir]
   (->>
-    (-> (markdown/parse-metadata (io/file dir "README.md")) first :functions)
-    (map (fn [m] {:type "function" :function m}))))
+   (-> (markdown/parse-metadata (io/file dir "README.md")) first :functions)
+   (map (fn [m] {:type "function" :function m}))))
 
 (defn collect-metadata [dir]
   (dissoc
-    (-> (markdown/parse-metadata (io/file dir "README.md")) first)
-    :extractors :functions))
+   (-> (markdown/parse-metadata (io/file dir "README.md")) first)
+   :extractors :functions))
 
-(defn all-facts 
+(defn all-facts
   "returns a map of extracted *math-context*
      params
        project-root - the host project root dir
@@ -111,7 +112,7 @@
 ;; registry of prompts directories stores in the docker-prompts volumes
 (def registry-file "/prompts/registry.edn")
 
-(defn read-registry 
+(defn read-registry
   "read the from the prompt registry in the current engine volume"
   []
   (try
@@ -119,22 +120,21 @@
     (catch java.io.FileNotFoundException _
       {:prompts []})
     (catch Throwable t
-      (binding [*out* *err*]
-        (println "Warning (corrupt registry.edn): " (.getMessage t)))
+      (warn "Warning (corrupt registry.edn): {{ t }}" {:exception t})
       {:prompts []})))
 
-(defn update-registry 
+(defn update-registry
   "update the prompt registry in the current engine volume"
   [f]
   (spit registry-file (pr-str (f (read-registry)))))
 
-(defn- get-dir 
+(defn- get-dir
   "returns the prompt directory to use"
   [dir]
   (or
-    (when (string/starts-with? dir "github") (git/prompt-dir dir))
-    dir
-    "docker"))
+   (when (string/starts-with? dir "github") (git/prompt-dir dir))
+   dir
+   "docker"))
 
 (defn get-prompts [& args]
   (let [[project-root user platform dir & {:keys [identity-token]}] args
@@ -148,11 +148,26 @@
                      (into []))]
     (map (comp merge-role renderer fs/file) prompts)))
 
-(defn function-handler [function-name m]
-  (println function-name)
-  (println m))
+(defn function-handler [{:keys [functions] :as opts} _function-name arg-map {:keys [resolve fail]}]
+  (if-let [container-definition (->
+                                 (->> (filter #(= "write_files" (-> % :function :name)) functions)
+                                      first)
+                                 :function
+                                 :container)]
+    (try
+      (let [function-call (merge
+                           container-definition
+                           (dissoc opts :functions)
+                           {:command [(json/generate-string arg-map)]})
+            {:keys [pty-output exit-code]} (docker/run-function function-call)]
+        (if (= 0 exit-code)
+          (resolve pty-output)
+          (fail (format "call exited with non-zero code (%d): %s" exit-code pty-output))))
+      (catch Throwable t
+        (fail (format "system failure %s" t))))
+    (fail "no function found")))
 
-(defn- -run-command 
+(defn- -run-command
   [& args]
   (cond
     (= "prompts" (first args))
@@ -179,14 +194,18 @@
        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
 
     (= "run" (first args))
-    (let [m (collect-metadata (get-dir (last args)))]
-      (openai/openai 
-        (merge 
-          {:messages (apply get-prompts (rest args))}
-          (when-let [functions (collect-functions (get-dir (last args)))]
-            (when (seq functions) {:tools functions}))
-          m) 
-        (partial openai/chunk-handler function-handler)))
+    (let [prompt-dir (get-dir (last args))
+          m (collect-metadata prompt-dir)
+          functions (collect-functions prompt-dir)]
+      (openai/openai
+       (merge
+        {:messages (apply get-prompts (rest args))}
+        (when (seq functions) {:tools functions})
+        m)
+       (partial openai/chunk-handler (partial
+                                      function-handler
+                                      {:functions functions
+                                       :host-dir (first (rest args))}))))
 
     :else
     (apply get-prompts args)))
@@ -202,19 +221,11 @@
     (let [{:keys [arguments options]} (cli/parse-opts args cli-opts)]
       ;; positional args are
       ;;   host-project-root user platform prompt-dir-or-github-ref & {opts}
-      (apply prompts (concat 
-                       arguments
-                       (when (:identity-token options)
-                         [:identity-token (:identity-token options)]))))
+      (apply prompts (concat
+                      arguments
+                      (when (:identity-token options)
+                        [:identity-token (:identity-token options)]))))
     (catch Throwable t
       (warn "Error: {{ exception }}" {:exception t})
       (System/exit 1))))
 
-(comment
-  (collect-extractors "docker")
-  (->> (-run-command "/Users/slim/docker/labs-make-runbook/" "jimclark106" "darwin" "npm_setup")
-       (map :content)
-       (map println))
-  (->> (-run-command "/Users/slim/docker/genai-stack/" "jimclark106" "darwin" "docker")
-       (map :content)
-       (map println)))

@@ -11,3 +11,5 @@ node_modules
 /prompts/functions/write_file/.direnv/
 /prompts/functions/write_file/result
 /prompts/functions/write_file/blah.txt
+/prompts/functions/write_files/.direnv/
+/prompts/functions/write_files/result
