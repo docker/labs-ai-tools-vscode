@@ -82,4 +82,6 @@
   (parse-github-ref nil)
   (parse-github-ref "")
   (parse-github-ref "github:docker/labs-make-runbook")
-  (parse-github-ref "github:docker/labs-make-runbook?ref=main&path=/prompts/docker"))
+  (parse-github-ref "github:docker/labs-make-runbook?ref=main&path=/prompts/docker")
+  (parse-github-ref "github:docker/labs-githooks?ref=main&path=/prompts/docker")
+  )

@@ -25,10 +25,6 @@ COPY --from=build /app/prompts.jar /app/prompts.jar
 COPY docker docker 
 COPY npm_setup npm_setup
 COPY lazy_docker lazy_docker
-COPY git_hooks git_hooks
-COPY harmonia harmonia
-COPY ollama ollama
-COPY git_smoosh git_smoosh
 
 # Can't be shell form because we need to pass JSON as an arg
-ENTRYPOINT [ "bb", "prompts.jar" ]
+ENTRYPOINT [ "bb", "/app/prompts.jar" ]

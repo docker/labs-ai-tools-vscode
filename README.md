@@ -39,6 +39,7 @@ See [prompts README](./prompts/README.md).
 
 ```sh
 # docker:command=build-and-install
-npm run package
-code --install-extension make-runbook-0.0.6.vsix
+yarn run compile
+yarn run package
+code --install-extension make-runbook-0.0.9.vsix
 ```
