@@ -32,11 +32,19 @@
           (cb chunk)))
       (throw (ex-info "Failed to call OpenAI API" response)) )))
 
+(defn not-done [s]
+  (when (not (string/starts-with? (string/trim s) "'DONE'")) s))
+
+(defn parse [s]
+  (try 
+    (json/parse-string s true)
+    (catch Throwable _ nil)))
+
 (defn chunk-handler [function-handler chunk]
   (let [{:keys [delta message _finish_reason _role]}
         (some-> chunk
                 (string/replace #"data: " "")
-                (json/parse-string true)
+                (parse)
                 (get-in [:choices 0]))]
 
     ;; finish-reason will be :stop :length :tool_calls :content_filter :null
