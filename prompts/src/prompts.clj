@@ -2,18 +2,19 @@
   (:require
    [babashka.fs :as fs]
    [cheshire.core :as json]
+   [clojure.core.async :as async]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as string]
+   [clojure.tools.cli :as cli]
    [docker]
    [git]
    [markdown.core :as markdown]
    [medley.core :as medley]
    [openai]
+   [jsonrpc]
    [pogonos.core :as stache]
-   [clojure.pprint :refer [pprint]]
-   [selmer.parser :as selmer]
-   [clojure.tools.cli :as cli]))
+   [selmer.parser :as selmer]))
 
 (defn- facts [project-facts user platform]
   (medley/deep-merge
@@ -196,16 +197,19 @@
     (= "run" (first args))
     (let [prompt-dir (get-dir (last args))
           m (collect-metadata prompt-dir)
-          functions (collect-functions prompt-dir)]
+          functions (collect-functions prompt-dir)
+          [c h] (openai/chunk-handler (partial
+                                       function-handler
+                                       {:functions functions
+                                        :host-dir (first (rest args))}))]
+
       (openai/openai
        (merge
         {:messages (apply get-prompts (rest args))}
         (when (seq functions) {:tools functions})
         m)
-       (partial openai/chunk-handler (partial
-                                      function-handler
-                                      {:functions functions
-                                       :host-dir (first (rest args))}))))
+       h)
+      (async/<!! c))
 
     :else
     (apply get-prompts args)))
@@ -214,17 +218,21 @@
   (println
    (json/generate-string (apply -run-command args))))
 
-(def cli-opts [[nil "--identity-token TOKEN" "IDENTITY-TOKEN"]])
+(def cli-opts [[nil "--identity-token TOKEN" "IDENTITY-TOKEN"]
+               [nil "--jsonrpc" "Output JSON-RPC notifications"]])
 
 (defn -main [& args]
   (try
     (let [{:keys [arguments options]} (cli/parse-opts args cli-opts)]
       ;; positional args are
       ;;   host-project-root user platform prompt-dir-or-github-ref & {opts}
-      (apply prompts (concat
-                      arguments
-                      (when (:identity-token options)
-                        [:identity-token (:identity-token options)]))))
+      (binding [jsonrpc/notify (if (:jsonrpc options)
+                                 jsonrpc/-notify
+                                 jsonrpc/-println)]
+        (apply prompts (concat
+                        arguments
+                        (when (:identity-token options)
+                          [:identity-token (:identity-token options)])))))
     (catch Throwable t
       (warn "Error: {{ exception }}" {:exception t})
       (System/exit 1))))
