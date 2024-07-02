@@ -14,6 +14,7 @@
    [openai]
    [jsonrpc]
    [pogonos.core :as stache]
+   [pogonos.partials :as partials]
    [selmer.parser :as selmer]))
 
 (defn- facts [project-facts user platform]
@@ -34,8 +35,18 @@
 (defn- name-matches [re]
   (fn [p] (re-matches re (fs/file-name p))))
 
-(defn- selma-render [m f]
-  [{:content (stache/render-string (slurp f) m)} f])
+(defn- selma-render [prompt-dir m f]
+  [{:content (stache/render-string
+              (slurp f)
+              m
+              {:partials (partials/file-partials [prompt-dir] ".md")})} f])
+
+(comment
+  (partials/file-partials ["dockerfiles"] ".md")
+  (selma-render
+   "dockerfiles"
+   {}
+   "dockerfiles/020_system_prompt.md"))
 
 (def prompt-file-pattern #".*_(.*)_.*.md")
 
@@ -142,31 +153,53 @@
         ;; TODO the docker default no longer makes sense here
         prompt-dir (get-dir dir)
         m (all-facts project-root identity-token prompt-dir)
-        renderer (partial selma-render (facts m user platform))
+        renderer (partial selma-render prompt-dir (facts m user platform))
         prompts (->> (fs/list-dir prompt-dir)
                      (filter (name-matches prompt-file-pattern))
                      (sort-by fs/file-name)
                      (into []))]
     (map (comp merge-role renderer fs/file) prompts)))
 
-(defn function-handler [{:keys [functions] :as opts} _function-name arg-map {:keys [resolve fail]}]
-  (if-let [container-definition (->
-                                 (->> (filter #(= "write_files" (-> % :function :name)) functions)
-                                      first)
-                                 :function
-                                 :container)]
+(defn function-handler [{:keys [functions] :as opts} function-name arg-map {:keys [resolve fail]}]
+  (if-let [definition (->
+                       (->> (filter #(= function-name (-> % :function :name)) functions)
+                            first)
+                       :function)]
     (try
-      (let [function-call (merge
-                           container-definition
-                           (dissoc opts :functions)
-                           {:command [(json/generate-string arg-map)]})
-            {:keys [pty-output exit-code]} (docker/run-function function-call)]
-        (if (= 0 exit-code)
-          (resolve pty-output)
-          (fail (format "call exited with non-zero code (%d): %s" exit-code pty-output))))
+      (cond
+        (:container definition) ;; synchronous call to container function
+        (let [function-call (merge
+                             (:container definition)
+                             (dissoc opts :functions)
+                             {:command [(json/generate-string arg-map)]})
+              {:keys [pty-output exit-code]} (docker/run-function function-call)]
+          (if (= 0 exit-code)
+            (resolve pty-output)
+            (fail (format "call exited with non-zero code (%d): %s" exit-code pty-output))))
+        (= "prompt" (:type definition)) ;; asynchronous call to another agent
+        (do
+          (resolve "some json output")))
       (catch Throwable t
         (fail (format "system failure %s" t))))
     (fail "no function found")))
+
+(defn- run-prompts 
+  [& args]
+  (let [prompt-dir (get-dir (last args))
+        m (collect-metadata prompt-dir)
+        functions (collect-functions prompt-dir)
+        [c h] (openai/chunk-handler (partial
+                                      function-handler
+                                      {:functions functions
+                                       :host-dir (first (rest args))}))]
+
+    (openai/openai
+      (merge
+        {:messages (apply get-prompts (rest args))}
+        (when (seq functions) {:tools functions})
+        m)
+      h)
+    {:event (async/<!! c)}))
 
 (defn- -run-command
   [& args]
@@ -195,21 +228,7 @@
        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
 
     (= "run" (first args))
-    (let [prompt-dir (get-dir (last args))
-          m (collect-metadata prompt-dir)
-          functions (collect-functions prompt-dir)
-          [c h] (openai/chunk-handler (partial
-                                       function-handler
-                                       {:functions functions
-                                        :host-dir (first (rest args))}))]
-
-      (openai/openai
-       (merge
-        {:messages (apply get-prompts (rest args))}
-        (when (seq functions) {:tools functions})
-        m)
-       h)
-      (async/<!! c))
+    (apply run-prompts args)
 
     :else
     (apply get-prompts args)))
@@ -218,7 +237,7 @@
   (println
    (json/generate-string (apply -run-command args))))
 
-(def cli-opts [[nil "--identity-token TOKEN" "IDENTITY-TOKEN"]
+(def cli-opts [[nil "--identity-token TOKEN" "Supply a Docker identity token for pulling images"]
                [nil "--jsonrpc" "Output JSON-RPC notifications"]])
 
 (defn -main [& args]
