@@ -13,6 +13,7 @@
    [medley.core :as medley]
    [openai]
    [jsonrpc]
+   [clojure.pprint :refer [pprint]]
    [pogonos.core :as stache]
    [pogonos.partials :as partials]
    [selmer.parser :as selmer]))
@@ -160,7 +161,7 @@
                      (into []))]
     (map (comp merge-role renderer fs/file) prompts)))
 
-(defn function-handler [{:keys [functions] :as opts} function-name arg-map {:keys [resolve fail]}]
+(defn function-handler [{:keys [functions] :as opts} function-name json-arg-string {:keys [resolve fail]}]
   (if-let [definition (->
                        (->> (filter #(= function-name (-> % :function :name)) functions)
                             first)
@@ -171,35 +172,47 @@
         (let [function-call (merge
                              (:container definition)
                              (dissoc opts :functions)
-                             {:command [(json/generate-string arg-map)]})
+                             {:command [json-arg-string]})
               {:keys [pty-output exit-code]} (docker/run-function function-call)]
           (if (= 0 exit-code)
             (resolve pty-output)
             (fail (format "call exited with non-zero code (%d): %s" exit-code pty-output))))
         (= "prompt" (:type definition)) ;; asynchronous call to another agent
         (do
-          (resolve "some json output")))
+          (resolve "This is an NPM project.")))
       (catch Throwable t
         (fail (format "system failure %s" t))))
     (fail "no function found")))
 
-(defn- run-prompts 
-  [& args]
+(defn- run-prompts
+  [prompts & args]
   (let [prompt-dir (get-dir (last args))
         m (collect-metadata prompt-dir)
         functions (collect-functions prompt-dir)
         [c h] (openai/chunk-handler (partial
-                                      function-handler
-                                      {:functions functions
-                                       :host-dir (first (rest args))}))]
+                                     function-handler
+                                     {:functions functions
+                                      :host-dir (first (rest args))}))]
 
     (openai/openai
-      (merge
-        {:messages (apply get-prompts (rest args))}
-        (when (seq functions) {:tools functions})
-        m)
-      h)
-    {:event (async/<!! c)}))
+     (merge
+      {:messages prompts}
+      (when (seq functions) {:tools functions})
+      m) h)
+    c))
+
+(defn- conversation-loop 
+  [& args]
+  (async/go-loop
+    [prompts (apply get-prompts (rest args))]
+    (let [{:keys [messages finish-reason] :as m} (async/<!! (apply run-prompts prompts args))]
+      (if (= "tool_calls" finish-reason)
+        (do
+          (jsonrpc/notify :message {:content (with-out-str (pprint m))})
+          (recur (concat prompts messages)))
+        (do 
+          (jsonrpc/notify :message {:content (with-out-str (pprint m))})
+          {:done finish-reason})))))
 
 (defn- -run-command
   [& args]
@@ -228,7 +241,7 @@
        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
 
     (= "run" (first args))
-    (apply run-prompts args)
+    (async/<!! (apply conversation-loop args))
 
     :else
     (apply get-prompts args)))
@@ -245,13 +258,15 @@
     (let [{:keys [arguments options]} (cli/parse-opts args cli-opts)]
       ;; positional args are
       ;;   host-project-root user platform prompt-dir-or-github-ref & {opts}
-      (binding [jsonrpc/notify (if (:jsonrpc options)
-                                 jsonrpc/-notify
-                                 jsonrpc/-println)]
-        (apply prompts (concat
-                        arguments
-                        (when (:identity-token options)
-                          [:identity-token (:identity-token options)])))))
+      (alter-var-root
+       #'jsonrpc/notify
+       (fn [_] (if (:jsonrpc options)
+                 jsonrpc/-notify
+                 jsonrpc/-println)))
+      (apply prompts (concat
+                      arguments
+                      (when (:identity-token options)
+                        [:identity-token (:identity-token options)]))))
     (catch Throwable t
       (warn "Error: {{ exception }}" {:exception t})
       (System/exit 1))))

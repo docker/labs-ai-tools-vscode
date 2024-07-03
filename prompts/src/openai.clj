@@ -43,30 +43,27 @@
   (let [c (async/chan)]
     (function-handler
       function-name
-      (json/parse-string arguments true)
+      arguments
       {:resolve
        (fn [output]
-         (jsonrpc/notify :message {:content (format "## ROLE tool\n%s\n" output)})
-         (async/go (async/>! c {:content output :role "tool" :tool_call_id tool-call-id}))
-         ;; add message with output to the conversation and call complete again
-         ;; add the assistant message that requested the tool be called
-         ;; {:tool_calls [] :role "assistant" :name "optional"}
-         ;; also ad the tool message with the response from the tool
-         ;; {:content "" :role "tool" :tool_call_id ""}
-
-         ;; this is also where we need to trampoline because we are potentially in a loop here
-         ;; in some ways we should probably just create channels and call these threads anyway
-         ;; I don't know how much we need a formal assistant api to make progress
-         )
+         (jsonrpc/notify :message {:content (format "## ROLE tool (%s)\n%s\n" function-name output)})
+         (async/go 
+           (async/>! c {:content output :role "tool" :tool_call_id tool-call-id})
+           (async/close! c)))
        :fail (fn [output]
                (jsonrpc/notify :message {:content (format "## ROLE tool\n function call %s failed %s" function-name output)})
-               (async/go (async/>! c {:content output :role "tool" :tool_call_id tool-call-id})))})
+               (async/go 
+                 (async/>! c {:content output :role "tool" :tool_call_id tool-call-id})
+                 (async/close! c)))})
     c))
 
-(defn make-tool-calls [function-handler tool-calls]
-  (doseq [{{:keys [arguments name]} :function tool-call-id :id} tool-calls]
-    (jsonrpc/notify :message {:content (format "\n... calling %s\n" name)})
-    (call-function function-handler name arguments tool-call-id)))
+(defn make-tool-calls 
+  " returns channel with all messages from completed executions of tools"
+  [function-handler tool-calls]
+  (->>
+    (for [{{:keys [arguments name]} :function tool-call-id :id} tool-calls]
+      (call-function function-handler name arguments tool-call-id) )
+    (async/merge)))
 
 (defn function-merge [m {:keys [name arguments]}]
   (cond-> m
@@ -76,9 +73,11 @@
 (defn update-tool-calls [m tool-calls]
   (reduce
    (fn [m {:keys [index id function]}]
-     (update-in m [:tool-calls (or index id) :function]
-                (fnil function-merge {}) (merge function
-                                                (when id {:id id}))))
+     (-> m 
+         (update-in [:tool-calls (or index id) :function]
+                     (fnil function-merge {}) function)
+         (update-in [:tool-calls (or index id)]
+                    (fnil merge {}) (when id {:id id}))))
    m tool-calls))
 
 (comment
@@ -105,14 +104,21 @@
      []
       (let [e (async/<! c)]
         (cond
-          (:done e) (let [{calls :tool-calls finish-reason :finish-reason} @response]
+          (:done e) (let [{calls :tool-calls finish-reason :finish-reason} @response
+                          messages [{:role "assistant" :tool_calls (->> (vals calls)
+                                                                        (map #(assoc % :type "function")))}]]
                       (jsonrpc/notify :functions-done (vals calls))
                       (jsonrpc/notify :message {:content "\n---\n\n"})
-                      ;; make-tool-calls returns nil
-                      (make-tool-calls
-                       (:tool-handler e)
-                       (vals calls))
-                      {:finish-reason finish-reason})
+                      ;; make-tool-calls returns a channel with results of tool call messages
+                      ;; so we can continue the conversation
+                      {:finish-reason finish-reason
+                       :messages
+                       (async/<!
+                         (->>
+                           (make-tool-calls
+                             (:tool-handler e)
+                             (vals calls))
+                           (async/reduce conj messages)))})
           :else (let [{:keys [tool_calls finish-reason]} e]
                   (swap! response update-tool-calls tool_calls)
                   (when finish-reason (swap! response assoc :finish-reason finish-reason))
@@ -124,12 +130,15 @@
     {:done true}
     (json/parse-string s true)))
 
-(defn chunk-handler [function-handler]
+(defn chunk-handler 
+  "sets up a response handler loop for use with an OpenAI API call
+    returns [channel handler] - channel will emit the updated chat messages after dispatching any functions"
+  [function-handler]
   (let [c (async/chan 1)]
     [(response-loop c)
      (fn [chunk]
        ;; TODO this only supports when there's a single choice
-       (let [{[{:keys [delta message finish_reason _role] :as choice}] :choices
+       (let [{[{:keys [delta message finish_reason _role]}] :choices
               done? :done _completion-id :id}
              ;; only streaming events will be SSE data fields
              (some-> chunk
