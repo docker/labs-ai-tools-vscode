@@ -5,6 +5,8 @@ node_modules
 *.vsix
 /.clj-kondo/
 /.lsp/
+**/.direnv/
+**/result
 /prompts/prompts.jar
 /prompts/codescope/.direnv/
 /prompts/codescope/result

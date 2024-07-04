@@ -209,10 +209,10 @@
     (let [{:keys [messages finish-reason] :as m} (async/<!! (apply run-prompts prompts args))]
       (if (= "tool_calls" finish-reason)
         (do
-          (jsonrpc/notify :message {:content (with-out-str (pprint m))})
+          (jsonrpc/notify :message {:debug (with-out-str (pprint m))})
           (recur (concat prompts messages)))
         (do
-          (jsonrpc/notify :message {:content (with-out-str (pprint m))})
+          (jsonrpc/notify :message {:debug (with-out-str (pprint m))})
           {:done finish-reason})))))
 
 (defn- -run-command

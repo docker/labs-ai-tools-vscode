@@ -18,7 +18,7 @@
      returns nil
      throws exception only if response can't be initiated"
   [request cb]
-  (jsonrpc/notify :message {:content "## ROLE assistant\n"})
+  (jsonrpc/notify :message {:content "\n## ROLE assistant\n"})
   (let [response
         (http/post
          "https://api.openai.com/v1/chat/completions"
@@ -46,12 +46,12 @@
      arguments
      {:resolve
       (fn [output]
-        (jsonrpc/notify :message {:content (format "## ROLE tool (%s)\n%s\n" function-name output)})
+        (jsonrpc/notify :message {:content (format "\n## ROLE tool (%s)\n%s\n" function-name output)})
         (async/go
           (async/>! c {:content output :role "tool" :tool_call_id tool-call-id})
           (async/close! c)))
       :fail (fn [output]
-              (jsonrpc/notify :message {:content (format "## ROLE tool\n function call %s failed %s" function-name output)})
+              (jsonrpc/notify :message {:content (format "\n## ROLE tool\n function call %s failed %s" function-name output)})
               (async/go
                 (async/>! c {:content output :role "tool" :tool_call_id tool-call-id})
                 (async/close! c)))})
