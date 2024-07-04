@@ -179,6 +179,7 @@
             (fail (format "call exited with non-zero code (%d): %s" exit-code pty-output))))
         (= "prompt" (:type definition)) ;; asynchronous call to another agent
         (do
+          ;; TODO use the assistant here
           (resolve "This is an NPM project.")))
       (catch Throwable t
         (fail (format "system failure %s" t))))
@@ -201,16 +202,16 @@
       m) h)
     c))
 
-(defn- conversation-loop 
+(defn- conversation-loop
   [& args]
   (async/go-loop
-    [prompts (apply get-prompts (rest args))]
+   [prompts (apply get-prompts (rest args))]
     (let [{:keys [messages finish-reason] :as m} (async/<!! (apply run-prompts prompts args))]
       (if (= "tool_calls" finish-reason)
         (do
           (jsonrpc/notify :message {:content (with-out-str (pprint m))})
           (recur (concat prompts messages)))
-        (do 
+        (do
           (jsonrpc/notify :message {:content (with-out-str (pprint m))})
           {:done finish-reason})))))
 
