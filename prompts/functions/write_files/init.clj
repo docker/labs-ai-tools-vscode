@@ -25,7 +25,7 @@
                        (->> coll (map :path) (string/join ",")))))
     (catch Throwable t
       (binding [*out* *err*]
-        (println (.getMessage t)))
+        (println t))
       (System/exit 1))))
 
 (defn -main []
