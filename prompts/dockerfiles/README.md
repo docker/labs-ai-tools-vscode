@@ -42,7 +42,7 @@ functions:
             type: string 
             description: the name docker image repository
     container:
-        image: vonwig/function_docker_scout_tag_recommendation:latest
+        image: vonwig/docker_scout_tag_recommendation:latest
 ---
 
 # Background
