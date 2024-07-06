@@ -2,19 +2,51 @@
   (:require
    [babashka.curl :as curl]
    [cheshire.core :as json]
-   [clojure.pprint :refer [pprint]]) 
+   [clojure.pprint :refer [pprint]]
+   [clojure.spec.alpha :as spec]
+   [creds])
   (:import
    [java.util Base64]))
 
 (defn encode [to-encode]
   (.encodeToString (Base64/getEncoder) (.getBytes to-encode)))
 
-(defn pull-image [{:keys [image identity-token]}]
+;; https://index.docker.io/v1/ does not return IdentityTokens so we 
+;; probably won't use this endpoint
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn auth
+  [creds]
+  (curl/post
+   "http://localhost/auth"
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]
+    :body (json/generate-string creds)}))
+
+(defn pull-image [{:keys [image identity-token creds]}]
   (curl/post
    (format "http://localhost/images/create?fromImage=%s" image)
    {:raw-args ["--unix-socket" "/var/run/docker.sock"]
     :throw false
-    :headers {"X-Registry-Auth" (encode (json/generate-string {:identity-token identity-token}))}}))
+    :headers {"X-Registry-Auth"
+              ;; I don't think we'll be pulling images
+              ;; from registries that support identity tokens
+              (-> (cond
+                    identity-token {:identitytoken identity-token}
+                    creds creds)
+                  (json/generate-string)
+                  (encode))}}))
+
+(defn list-images [m]
+  (curl/get
+   "http://localhost/images/json"
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]
+    :query-params {:filters (json/generate-string m)}
+    :throw false}))
+
+(defn delete-image [{:keys [image]}]
+  (curl/delete
+   (format "http://localhost/images/%s?force=true" image)
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]
+    :throw false}))
 
 (defn container->archive [{:keys [Id path]}]
   (curl/get
@@ -45,10 +77,9 @@
 
 (defn inspect-container [{:keys [Id]}]
   (curl/get
-    (format "http://localhost/containers/%s/json" Id)
-    {:raw-args ["--unix-socket" "/var/run/docker.sock"]
-     :throw false
-     }))
+   (format "http://localhost/containers/%s/json" Id)
+   {:raw-args ["--unix-socket" "/var/run/docker.sock"]
+    :throw false}))
 
 (defn start-container [{:keys [Id]}]
   (curl/post
@@ -95,6 +126,7 @@
 (def delete (comp (status? 204 "delete-container") delete-container))
 (def get-archive (comp (status? 200 "container->archive") container->archive))
 (def pull (comp (status? 200 "pull-image") pull-image))
+(def images (comp ->json list-images))
 
 (def sample {:image "docker/lsp:latest"
              :entrypoint "/app/result/bin/docker-lsp"
@@ -102,9 +134,21 @@
                        "--vs-machine-id" "none"
                        "--workspace" "/docker"]})
 
+(spec/def ::host-dir string?)
+(spec/def ::entrypoint string?)
+(spec/def ::user string?)
+(spec/def ::pat string?)
+(spec/def ::image string?)
+(spec/def ::command (spec/coll-of string?))
+(spec/def ::container-definition (spec/keys :opt-un [::host-dir ::entrypoint ::command ::user ::pat]
+                                           :req-un [::image]))
+
+;; TODO verify that m is a container-definition
 (defn run-function [m]
-  (when (:identity-token m)
-    (pull m))
+  (when (and (:user m) (or (:pat m) (creds/credential-helper->jwt))) 
+    (pull (assoc m :creds {:username (:user m)
+                           :password (or (:pat m) (creds/credential-helper->jwt))
+                           :serveraddress "https://index.docker.io/v1/"})))
   (let [x (create m)]
     (start x)
     (wait x)
@@ -119,12 +163,21 @@
 (def extract-facts run-function)
 
 (comment
-  (pprint (json/parse-string (extract-facts (assoc sample :host-dir "/Users/slim/docker/genai-stack")) keyword))
-  (extract-facts {:image "vonwig/go-linguist:latest" :command ["-json"] :host-dir "/Users/slim/docker/labs-make-runbook"})
+  (pprint 
+    (json/parse-string 
+      (extract-facts 
+        (assoc sample 
+               :host-dir "/Users/slim/docker/genai-stack"
+               :user "jimclark106")) keyword))
+  (docker/delete-image {:image "vonwig/go-linguist:latest"})
+  (extract-facts {:image "vonwig/go-linguist:latest" 
+                  :command ["-json"] 
+                  :host-dir "/Users/slim/docker/labs-make-runbook"
+                  :user "jimclark106"})
   (pprint
    (json/parse-string
-     (extract-facts
-       {:image "vonwig/extractor-node:latest"
-        :host-dir "/Users/slim/docker/labs-make-runbook"})
+    (extract-facts
+     {:image "vonwig/extractor-node:latest"
+      :host-dir "/Users/slim/docker/labs-make-runbook"})
     keyword)))
 

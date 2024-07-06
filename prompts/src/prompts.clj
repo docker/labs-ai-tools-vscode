@@ -5,20 +5,23 @@
    [clojure.core.async :as async]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.pprint :refer [pprint]]
    [clojure.string :as string]
    [clojure.tools.cli :as cli]
+   creds
    [docker]
    [git]
+   [jsonrpc]
    [markdown.core :as markdown]
    [medley.core :as medley]
    [openai]
-   [jsonrpc]
-   [clojure.pprint :refer [pprint]]
    [pogonos.core :as stache]
    [pogonos.partials :as partials]
    [selmer.parser :as selmer]))
 
-(defn- facts [project-facts user platform]
+(defn- facts
+  "fix up facts before sending to templates"
+  [project-facts user platform]
   (medley/deep-merge
    {:platform platform
     :username user
@@ -63,14 +66,15 @@
   "reduces into m using a container function
      params
        dir - the host dir that the container will mount read-only at /project
-       identity-token - a DockerHub identity token
        m - the map to merge into
        container-definition - the definition for the function"
-  [dir identity-token m container-definition]
+  [dir m container-definition]
   (try
     (medley/deep-merge
      m
-     (let [{:keys [pty-output exit-code]} (docker/extract-facts (assoc container-definition :host-dir dir :identity-token identity-token))]
+     (let [{:keys [pty-output exit-code]} (docker/extract-facts
+                                           (-> container-definition
+                                               (assoc :host-dir dir)))]
        (when (= 0 exit-code)
          (case (:output-handler container-definition)
            "linguist" (->> (json/parse-string pty-output keyword) vals (into []) (assoc {} :linguist))
@@ -84,13 +88,15 @@
       m)))
 
 (comment
+  ;; TODO move this to an assertion
   (facts
    (fact-reducer "/Users/slim/docker/labs-make-runbook"
-                 ""
                  {}
                  {:image "vonwig/go-linguist:latest"
                   :command ["-json"]
-                  :output-handler "linguist"})
+                  :output-handler "linguist"
+                  :user "jimclark106"
+                  :pat (creds/credential-helper->jwt)})
    "jimclark106" "darwin"))
 
 (defn collect-extractors [dir]
@@ -113,14 +119,20 @@
    (-> (markdown/parse-metadata (io/file dir "README.md")) first)
    :extractors :functions))
 
-(defn all-facts
+(defn run-extractors
   "returns a map of extracted *math-context*
      params
        project-root - the host project root dir
        identity-token - a valid Docker login auth token
-       dir - a prompst directory with a valid README.md"
-  [project-root identity-token dir]
-  (reduce (partial fact-reducer project-root identity-token) {} (collect-extractors dir)))
+       dir - a prompts directory with a valid README.md"
+  [{:keys [host-dir prompts user pat]}]
+  (reduce
+   (partial fact-reducer host-dir)
+   {}
+   (->> (collect-extractors prompts)
+        (map (fn [m] (merge m
+                            (when user {:user user})
+                            (when pat {:pat pat})))))))
 
 ;; registry of prompts directories stores in the docker-prompts volumes
 (def registry-file "/prompts/registry.edn")
@@ -150,10 +162,15 @@
    "docker"))
 
 (defn get-prompts [& args]
-  (let [[project-root user platform dir & {:keys [identity-token]}] args
+  (let [[project-root user platform prompts-dir & {:keys [pat]}] args
         ;; TODO the docker default no longer makes sense here
-        prompt-dir (get-dir dir)
-        m (all-facts project-root identity-token prompt-dir)
+        prompt-dir (get-dir prompts-dir)
+        m (run-extractors
+           (merge {:host-dir project-root
+                   :prompts prompt-dir
+                   :user user
+                   :platform platform}
+                  (when pat {:pat pat})))
         renderer (partial selma-render prompt-dir (facts m user platform))
         prompts (->> (fs/list-dir prompt-dir)
                      (filter (name-matches prompt-file-pattern))
@@ -161,7 +178,7 @@
                      (into []))]
     (map (comp merge-role renderer fs/file) prompts)))
 
-(defn function-handler [{:keys [functions] :as opts} function-name json-arg-string {:keys [resolve fail]}]
+(defn function-handler [{:keys [functions user pat] :as opts} function-name json-arg-string {:keys [resolve fail]}]
   (if-let [definition (->
                        (->> (filter #(= function-name (-> % :function :name)) functions)
                             first)
@@ -172,7 +189,9 @@
         (let [function-call (merge
                              (:container definition)
                              (dissoc opts :functions)
-                             {:command [json-arg-string]})
+                             {:command [json-arg-string]}
+                             (when user {:user user})
+                             (when pat {:pat pat}))
               {:keys [pty-output exit-code]} (docker/run-function function-call)]
           (if (= 0 exit-code)
             (resolve pty-output)
@@ -187,13 +206,18 @@
 
 (defn- run-prompts
   [prompts & args]
-  (let [prompt-dir (get-dir (last args))
+  (let [[host-dir user platform prompts-dir & {:keys [pat]}] args
+        prompt-dir (get-dir prompts-dir)
         m (collect-metadata prompt-dir)
         functions (collect-functions prompt-dir)
         [c h] (openai/chunk-handler (partial
                                      function-handler
-                                     {:functions functions
-                                      :host-dir (first (rest args))}))]
+                                     (merge
+                                      {:functions functions
+                                       :host-dir host-dir
+                                       :user user
+                                       :platform platform}
+                                      (when pat {:pat pat}))))]
 
     (openai/openai
      (merge
@@ -205,7 +229,7 @@
 (defn- conversation-loop
   [& args]
   (async/go-loop
-   [prompts (apply get-prompts (rest args))]
+   [prompts (apply get-prompts args)]
     (let [{:keys [messages finish-reason] :as m} (async/<!! (apply run-prompts prompts args))]
       (if (= "tool_calls" finish-reason)
         (do
@@ -242,7 +266,7 @@
        (update-in m [:prompts] (fn [coll] (remove (fn [{:keys [type]}] (= type (second args))) coll)))))
 
     (= "run" (first args))
-    (async/<!! (apply conversation-loop args))
+    (async/<!! (apply conversation-loop (rest args)))
 
     :else
     (apply get-prompts args)))
@@ -251,8 +275,9 @@
   (println
    (json/generate-string (apply -run-command args))))
 
-(def cli-opts [[nil "--identity-token TOKEN" "Supply a Docker identity token for pulling images"]
-               [nil "--jsonrpc" "Output JSON-RPC notifications"]])
+(def cli-opts [[nil "--jsonrpc" "Output JSON-RPC notifications"]
+               [nil "--user USER" "The hub user"]
+               [nil "--pat PAT" "A hub PAT"]])
 
 (defn -main [& args]
   (try
@@ -266,8 +291,7 @@
                  jsonrpc/-println)))
       (apply prompts (concat
                       arguments
-                      (when (:identity-token options)
-                        [:identity-token (:identity-token options)]))))
+                      (when-let [pat (:pat options)] [:pat pat]))))
     (catch Throwable t
       (warn "Error: {{ exception }}" {:exception t})
       (System/exit 1))))

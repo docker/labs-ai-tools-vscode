@@ -2,6 +2,8 @@
 
 ## Running the docker prompts
 
+### Directly
+
 ```sh
 #docker:command=run-docker
 bb -m prompts /Users/slim/docker/labs-make-runbook jimclark106 darwin docker
