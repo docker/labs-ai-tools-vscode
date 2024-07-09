@@ -1,5 +1,5 @@
 
-## Running
+## Running Prompts
 
 To generate prompts for a project, run the following command, clone a repo into `$PWD` and run the 
 following command.
@@ -8,29 +8,50 @@ following command.
 docker run --rm \
            -v /var/run/docker.sock:/var/run/docker.sock \
            --mount type=volume,source=docker-prompts,target=/prompts \
-           vonwig/prompts:local $PWD \
-                                jimclark106 \
-                                darwin \
-                                "github:docker/labs-make-runbook?ref=main&path=prompts/lazy_docker"
+           vonwig/prompts:latest $PWD \
+                                 jimclark106 \
+                                 darwin \
+                                 "github:docker/labs-make-runbook?ref=main&path=prompts/lazy_docker"
 ```
 
-The four arguments are `project root dir`, `docker username`, `platform`, and the `github ref` for versioned prompt files.
+The four arguments are 
+* `project root dir on host`, 
+* `docker login username`, 
+* `platform`, 
+* `github ref` for prompt files.
 
-If you need to test prompts locally, you can open a terminal in your prompts directory and then type the following command
-to test them.
+If you need to test prompts before you push, you can bind a local prompt directory instead of using
+a GitHub ref.  For example, to test some local prompts in a directory named `my_prompts`, run:
 
 ```sh
 docker run --rm \
            -v /var/run/docker.sock:/var/run/docker.sock \
            --mount type=bind,source=$PWD,target=/app/my_prompts \
            --workdir /app
-           vonwig/prompts:local $PWD \
-                                jimclark106 \
-                                darwin \
-                                my_prompts
+           vonwig/prompts:latest $PWD \
+                                 jimclark106 \
+                                 darwin \
+                                 my_prompts
 ```
 
-### GitHub refs
+## Running a Conversation Loop
+
+```sh
+docker run --rm \
+           -it \
+           -v /var/run/docker.sock:/var/run/docker.sock \
+           --mount type=volume,source=docker-prompts,target=/prompts \
+           --mount type=bind,source=$HOME/.openai-api-key,target=/root/.openai-api-key \
+           vonwig/prompts:latest \
+                                 run \
+                                 $PWD \
+                                 $USER \
+                                 "$(uname -o)" \
+                                 "github:docker/labs-githooks?ref=main&path=prompts/git_hooks"
+```
+
+
+## GitHub refs
 
 Prompts are fetched from a GitHub repository.  The mandatory parts of the ref are `github:{owner}/{repo}` 
 but optional `path` and `ref` can be added to pull prompts from branches, and to specify a subdirectory
