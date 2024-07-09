@@ -50,6 +50,28 @@ docker run --rm \
                                  "github:docker/labs-githooks?ref=main&path=prompts/git_hooks"
 ```
 
+### Running a Conversation Loop with Local Prompts
+
+If you want to run a conversation loop with local prompts then you need to think about two different directories, the one that the root of your project ($PWD above), 
+and the one that contains your prompts (let's call that $PROMPTS_DIR).  Here's a command line for running the prompts when our $PWD is the project root and we've set the environment variable
+$PROMPTS_DIR to point at the directory containing our prompts.
+
+```sh
+docker run --rm \
+           -it \
+           -v /var/run/docker.sock:/var/run/docker.sock \
+           --mount type=bind,source=$PROMPTS_DIR,target=/app/my_prompts \
+           --workdir /app
+           --mount type=volume,source=docker-prompts,target=/prompts \
+           --mount type=bind,source=$HOME/.openai-api-key,target=/root/.openai-api-key \
+           vonwig/prompts:latest \
+                                 run \
+                                 $PWD \
+                                 $USER \
+                                 "$(uname -o)" \
+                                 my_prompts
+```
+
 
 ## GitHub refs
 
