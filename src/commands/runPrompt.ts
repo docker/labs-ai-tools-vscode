@@ -9,12 +9,6 @@ import { verifyHasOpenAIKey } from "../extension";
 import { showPromptPicker } from "../utils/promptPicker";
 import { prepareRunbookFile } from "../utils/runbookFilename";
 
-// Must match package.json contributed configuration
-const ENDPOINT_ENUM_MAP = {
-    OpenAI: "https://api.openai.com/v1",
-    Ollama: "http://localhost:11434/v1"
-};
-
 const START_DOCKER_COMMAND = {
     'win32': 'Start-Process -NoNewWindow -Wait -FilePath "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
     'darwin': 'open -a Docker',
@@ -22,7 +16,6 @@ const START_DOCKER_COMMAND = {
 };
 
 const DEFAULT_USER = "local-user";
-
 
 export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
 
@@ -85,10 +78,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
         workspaceFolder = workspaceFolders[option.index];
     }
 
-
-    if (vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') === 'OpenAI') {
-        await verifyHasOpenAIKey(secrets, true);
-    }
+    await verifyHasOpenAIKey(secrets, true);
 
     const promptOption = await showPromptPicker();
 
@@ -107,61 +97,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
     progress.report({ increment: 5, message: "Detecting docker desktop token" });
 
     try {
-        const auth = spawnSync(
-            `echo "https://index.docker.io/v1//access-token" | docker-credential-desktop get`,
-            {
-                shell: process.platform === 'win32' ? "powershell" : true,
-            }
-        );
-
-        let Username = DEFAULT_USER;
-
-        if (auth.stdout.toString().startsWith("{") && auth.status === 0 && !auth.error) {
-            try {
-                const authPayload = JSON.parse(auth.stdout.toString()) as {
-                    "ServerURL": string,
-                    "Username": string,
-                    "Secret": string
-                };
-                Username = authPayload.Username;
-            }
-            catch (e) {
-                throw new Error(`Expected JSON from docker-credential-desktop, got STDOUT: ${auth.stdout.toString()} STDERR: ${auth.stderr.toString()} ERR: ${(auth.error || "N/A").toString()}`);
-            }
-
-        }
-
-        progress.report({ increment: 5, message: "Starting LLM ..." });
-
-        const openai = new OpenAI({
-            apiKey: apiKey || '',
-            baseURL: ENDPOINT_ENUM_MAP[(await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-base") as 'Ollama' | 'OpenAI')]
-        });
-
-        progress.report({ increment: 5, message: "Preparing payload..." });
-
-        const messages = prepareProjectPrompt(workspaceFolder, Username, promptOption.id);
-
-        progress.report({ increment: 5, message: "Calling LLM..." });
-
-        const model = await vscode.workspace.getConfiguration("docker.make-runbook").get("openai-model") as string;
-
-        const completionStream = await openai.chat.completions.create({
-            messages,
-            model,
-            stream: true
-        });
-
-        progress.report({ increment: 5, message: `Streaming ${model}` });
-        const doc = editor.document;
-        for await (const chunk of completionStream) {
-            const edit = new vscode.WorkspaceEdit();
-            const text = chunk.choices[0].delta.content || '';
-            edit.insert(
-                doc.uri,
-                new vscode.Position(doc.lineCount, 0), text);
-            await vscode.workspace.applyEdit(edit);
-        }
+        progress.report({ increment: 5, message: "Running..." });
 
         await doc.save();
     } catch (e: unknown) {

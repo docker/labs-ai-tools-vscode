@@ -1,8 +1,8 @@
 {
-  "name": "make-runbook",
-  "displayName": "make-runbook",
-  "description": "Generates a runnable markdown file to make any docker project",
-  "version": "0.0.10",
+  "name": "labs-ai-tools-vscode",
+  "displayName": "Labs: AI Tools for VSCode",
+  "description": "Run & Debug AI Prompts with Dockerized tools",
+  "version": "0.0.20",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -21,63 +21,38 @@
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Docker Make Runbook",
+      "title": "Docker AI Prompts",
       "properties": {
-        "docker.make-runbook.openai-base": {
+        "docker.labs-ai-tools-vscode.project_dir": {
           "type": "string",
-          "default": "OpenAI",
-          "description": "OpenAI base API endpoint",
-          "enum": [
-            "OpenAI",
-            "Ollama"
-          ],
-          "enumDescriptions": [
-            "https://api.openai.com/v1",
-            "http://localhost:11434/v1"
-          ]
+          "description": "Project directory to run AI prompts within"
         },
-        "docker.make-runbook.openai-model": {
+        "docker.labs-ai-tools-vscode.openai_api_key": {
           "type": "string",
-          "default": "gpt-4",
-          "description": "OpenAI compatible model",
-          "enum": [
-            "gpt-4",
-            "llama2",
-            "llama3"
-          ],
-          "enumDescriptions": [
-            "OpenAI GPT-4",
-            "Ollama Llama2",
-            "Ollama Llama3"
-          ]
-        },
-        "docker.make-runbook.prompt-image": {
-          "type": "string",
-          "default": "vonwig/prompts:latest",
-          "description": "Image tag used for prompt generation"
+          "description": "OpenAI API key"
         }
       }
     },
     "commands": [
       {
-        "command": "docker.make-runbook.generate",
-        "title": "Generate a runbook"
+        "command": "docker.labs-ai-tools-vscode.run-prompt",
+        "title": "Run a prompt"
       },
       {
-        "command": "docker.make-runbook.run",
-        "title": "Runbook Commands"
+        "command": "docker.make-runbook.run-commands",
+        "title": "Check runbook commands"
       },
       {
         "command": "docker.make-runbook.set-openai-api-key",
-        "title": "Set OpenAI API key for Docker Make Runbook"
+        "title": "Set OpenAI API key for Docker AI prompts"
       },
       {
-        "command": "docker.make-runbook.save-prompt",
-        "title": "Save a runbook prompt"
+        "command": "docker.labs-ai-tools-vscode.save-prompt",
+        "title": "Save a prompt"
       },
       {
-        "command": "docker.make-runbook.delete-prompt",
-        "title": "Delete a saved runbook prompt"
+        "command": "docker.labs-ai-tools-vscode.delete-prompt",
+        "title": "Delete a saved prompt"
       }
     ]
   },
@@ -103,8 +78,8 @@
     "vsce": "^2.15.0"
   },
   "dependencies": {
-    "openai": "^4.38.5",
-    "vscode-languageclient": "^8.1.0",
-    "semver": "^7.5.2"
-  }
+    "semver": "^7.5.2",
+    "vscode-languageclient": "^8.1.0"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

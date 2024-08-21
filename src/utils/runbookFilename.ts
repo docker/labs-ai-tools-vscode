@@ -17,7 +17,7 @@ export const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder
     const friendlyPromptName = generateFriendlyPromptName(promptType);
 
     const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + `/runbook.${friendlyPromptName}.md`
+        workspaceFolder.uri.fsPath + `/prompt-resp-${friendlyPromptName}.md`
     );
 
     try {
