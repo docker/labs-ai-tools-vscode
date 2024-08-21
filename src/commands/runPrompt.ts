@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { verifyHasOpenAIKey } from "../extension";
 import { showPromptPicker } from "../utils/promptPicker";
 import { preparePromptFile } from "../utils/promptFilename";
+import { spawnPromptImage } from "../utils/promptRunner";
 
 const START_DOCKER_COMMAND = {
     'win32': 'Start-Process -NoNewWindow -Wait -FilePath "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
@@ -95,7 +96,9 @@ export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withPr
 
     try {
         progress.report({ increment: 5, message: "Running..." });
-        // TODO: Run the prompt
+        await spawnPromptImage(promptOption.id, workspaceFolder.uri.fsPath, DEFAULT_USER, process.platform, (json) => {
+
+        });
         await doc.save();
     } catch (e: unknown) {
         e = e as Error;
