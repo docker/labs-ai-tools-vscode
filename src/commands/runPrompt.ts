@@ -1,13 +1,10 @@
 import {
     spawnSync,
 } from "child_process";
-import { TextEncoder } from "util";
 import * as vscode from "vscode";
-import OpenAI from 'openai';
-import { prepareProjectPrompt } from "../utils/preparePrompt";
 import { verifyHasOpenAIKey } from "../extension";
 import { showPromptPicker } from "../utils/promptPicker";
-import { prepareRunbookFile } from "../utils/runbookFilename";
+import { preparePromptFile } from "../utils/promptFilename";
 
 const START_DOCKER_COMMAND = {
     'win32': 'Start-Process -NoNewWindow -Wait -FilePath "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
@@ -17,7 +14,7 @@ const START_DOCKER_COMMAND = {
 
 const DEFAULT_USER = "local-user";
 
-export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
+export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
 
     // Coerce the error to have an exit code
     type DockerSpawnError = Error & { code: number };
@@ -51,7 +48,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
                     vscode.env.openExternal(vscode.Uri.parse("https://www.docker.com/products/docker-desktop"));
                     return;
                 case "Try again":
-                    return vscode.commands.executeCommand("docker.make-runbook.generate");
+                    return vscode.commands.executeCommand("docker.labs-ai-tools-vscode.generate");
             }
         });
     }
@@ -88,7 +85,7 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
     let apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = (await prepareRunbookFile(workspaceFolder, promptOption.id) || {});
+    const { editor, doc } = (await preparePromptFile(workspaceFolder, promptOption.id) || {});
 
     if (!editor || !doc) {
         return;
@@ -98,11 +95,11 @@ export const generateRunbook = (secrets: vscode.SecretStorage) => vscode.window.
 
     try {
         progress.report({ increment: 5, message: "Running..." });
-
+        // TODO: Run the prompt
         await doc.save();
     } catch (e: unknown) {
         e = e as Error;
-        void vscode.window.showErrorMessage("Error generating runbook");
+        void vscode.window.showErrorMessage("Error running prompt");
         await editor.edit((edit) => {
             edit.insert(
                 new vscode.Position(editor.document.lineCount, 0),

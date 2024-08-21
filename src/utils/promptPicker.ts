@@ -1,8 +1,7 @@
 import { QuickPickItem, QuickPickItemKind, ThemeIcon, commands, window, workspace } from "vscode";
-import { getPromptTypes } from "./preparePrompt";
 
 // https://github.com/owner/repo/tree/ref/path
-// https://github.com/docker/labs-make-runbook/tree/main/prompts/docker
+// https://github.com/docker/labs-ai-tools-vscode/tree/main/prompts/docker
 const GitHubURLPattern = /https:\/\/github.com\/(.*)\/(.*)\/tree\/(.*)/;
 // github:owner/repo?ref=main&path=prompts/dir
 const GitHubRefPattern = /github:(.*)\/(.*)\?ref=(.*)/;
@@ -80,22 +79,6 @@ export interface PromptTypeOption extends QuickPickItem {
 export const showPromptPicker = (skipBuiltins = false) =>
     new Promise<PromptTypeOption | undefined>((resolve) => {
         let promptTypeItems: PromptTypeOption[] = [];
-        if (!skipBuiltins) {
-            const promptTypes = getPromptTypes();
-            promptTypeItems = promptTypes.map(f => (
-                {
-                    label: f.title,
-                    detail: `Generate runbook to use ${f.type} in this project`,
-                    id: f.type,
-                    description: "Built-in",
-                    buttons: f.saved ? [{
-                        iconPath: new ThemeIcon('trash'),
-                        tooltip: 'Delete saved command'
-                    }] : undefined,
-                    saved: f.saved
-                }
-            ));
-        }
         const getDefaultItems = () => {
             const defaultItems = [
                 {
@@ -104,12 +87,6 @@ export const showPromptPicker = (skipBuiltins = false) =>
                     id: "separator"
                 } as PromptTypeOption,
                 ...promptTypeItems.filter(i => i.saved),
-                {
-                    kind: QuickPickItemKind.Separator,
-                    label: "Built-In",
-                    id: "separator"
-                } as PromptTypeOption,
-                ...promptTypeItems.filter(i => !i.saved)
             ];
 
             return defaultItems;
@@ -117,7 +94,7 @@ export const showPromptPicker = (skipBuiltins = false) =>
 
         const quickPick = window.createQuickPick<PromptTypeOption>();
         quickPick.items = getDefaultItems();
-        quickPick.title = "Select runbook type";
+        quickPick.title = "Select prompt";
         quickPick.ignoreFocusOut = true;
         quickPick.onDidChangeValue((val) => {
             const githubRefMatch = val.match(GitHubRefPattern);
@@ -137,7 +114,7 @@ export const showPromptPicker = (skipBuiltins = false) =>
                     }]
                 }];
             }
-            //https://github.com/docker/labs-make-runbook/tree/main/prompts/npm_setup
+            //https://github.com/docker/labs-ai-tools-vscode/tree/main/prompts/npm_setup
             else if (githubURLMatch) {
                 const ref = parseGitHubURL(val)!;
                 quickPick.items = [{
@@ -178,11 +155,11 @@ export const showPromptPicker = (skipBuiltins = false) =>
         quickPick.onDidTriggerItemButton(async ({ item }) => {
             if (item.id) {
                 if (item.saved) {
-                    await commands.executeCommand("docker.make-runbook.delete-prompt", item.id);
+                    await commands.executeCommand("docker.labs-ai-tools-vscode.delete-prompt", item.id);
                     quickPick.items = getDefaultItems();
                 }
                 else {
-                    await commands.executeCommand("docker.make-runbook.save-prompt", item.id);
+                    await commands.executeCommand("docker.labs-ai-tools-vscode.save-prompt", item.id);
                     quickPick.items = getDefaultItems();
                 }
 

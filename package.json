@@ -6,7 +6,7 @@
   "publisher": "docker",
   "repository": {
     "type": "git",
-    "url": "https://github.com/docker/docker-make-runbook.git"
+    "url": "https://github.com/docker/docker-labs-ai-tools-vscode.git"
   },
   "engines": {
     "vscode": "^1.88.0"
@@ -39,11 +39,11 @@
         "title": "Run a prompt"
       },
       {
-        "command": "docker.make-runbook.run-commands",
-        "title": "Check runbook commands"
+        "command": "docker.labs-ai-tools-vscode.run-commands",
+        "title": "Run markdown commands"
       },
       {
-        "command": "docker.make-runbook.set-openai-api-key",
+        "command": "docker.labs-ai-tools-vscode.set-openai-api-key",
         "title": "Set OpenAI API key for Docker AI prompts"
       },
       {

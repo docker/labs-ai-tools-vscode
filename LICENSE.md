@@ -1,4 +1,4 @@
-Visual Studio Code Extension for Docker Runbooks
+Visual Studio Code Extension for Docker Prompts
 
 Copyright (c) Docker Inc
 

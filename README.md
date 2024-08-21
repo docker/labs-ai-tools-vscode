@@ -8,7 +8,7 @@
 ## Getting started
 Docker internal users: You must be opted-out of mandatory sign-in.
 
-1. Install latest VSIX file https://github.com/docker/labs-make-runbook/releases
+1. Install latest VSIX file https://github.com/docker/labs-ai-tools-vscode/releases
 2. Open your workspace
 3. Execute command `>Set OpenAI API key...` and enter your OpenAI secret key.
 4. Execute command `>save-prompt` and enter your prompt URL/ref.

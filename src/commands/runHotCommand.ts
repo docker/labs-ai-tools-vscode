@@ -12,15 +12,15 @@ const groupCommands = (blocks: (typeof workspaceCommands)[string]) => blocks.red
 export const runHotCommand = async () => {
     const quickPicks = [];
     if (Object.keys(workspaceCommands).length === 0) {
-        return vscode.window.showErrorMessage('No runbooks found in workspace');
+        return vscode.window.showErrorMessage('No commands found in workspace');
     }
-    for (const [runbookFSPath, blocks] of Object.entries(workspaceCommands)) {
+    for (const [promptOutFSPath, blocks] of Object.entries(workspaceCommands)) {
         quickPicks.push({
-            label: runbookFSPath,
+            label: promptOutFSPath,
             description: ``,
             detail: ``,
             kind: vscode.QuickPickItemKind.Separator,
-            workspace: runbookFSPath,
+            workspace: promptOutFSPath,
         });
 
         const groupedBlocks = groupCommands(blocks);
@@ -28,7 +28,7 @@ export const runHotCommand = async () => {
         quickPicks.push(...Object.entries(groupedBlocks).map(([command, script]) => ({
             label: command,
             detail: script,
-            workspace: runbookFSPath,
+            workspace: promptOutFSPath,
         })));
     };
 

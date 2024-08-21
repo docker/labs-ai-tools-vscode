@@ -10,7 +10,7 @@ export const savePrompt = async (prompt: string) => {
         return vscode.window.showErrorMessage("No prompt selected");
     }
 
-    const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
+    const promptImage = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('prompt-image') as string;
     const args = [
         "run",
         "--rm",
@@ -28,12 +28,12 @@ export const savePrompt = async (prompt: string) => {
     }
     else {
         vscode.window.showInformationMessage(`Saved ${prompt}`);
-        vscode.commands.executeCommand("docker.make-runbook.generate");
+        vscode.commands.executeCommand("docker.labs-ai-tools-vscode.generate");
     }
 };
 
 export const deletePrompt = (prompt: string) => {
-    const promptImage = vscode.workspace.getConfiguration('docker.make-runbook').get('prompt-image') as string;
+    const promptImage = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('prompt-image') as string;
     const args = [
         "run",
         "--rm",
@@ -51,6 +51,6 @@ export const deletePrompt = (prompt: string) => {
     }
     else {
         vscode.window.showInformationMessage(`Deleted ${prompt}`);
-        vscode.commands.executeCommand("docker.make-runbook.generate");
+        vscode.commands.executeCommand("docker.labs-ai-tools-vscode.generate");
     }
 };

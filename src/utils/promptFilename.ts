@@ -12,7 +12,7 @@ export const generateFriendlyPromptName = (promptType: string) => {
     return friendlyPromptName;
 };
 
-export const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
+export const preparePromptFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
 
     const friendlyPromptName = generateFriendlyPromptName(promptType);
 
@@ -22,22 +22,25 @@ export const prepareRunbookFile = async (workspaceFolder: vscode.WorkspaceFolder
 
     try {
         await vscode.workspace.fs.stat(uri);
-        const option = await vscode.window.showQuickPick([{ label: "Do nothing" }, { label: "Overwrite", detail: `Will delete ${uri.fsPath}` }], {
-            title: "Runbook already exists",
+        const option = await vscode.window.showQuickPick([{ label: "Append" }, { label: "Overwrite", detail: `Will delete ${uri.fsPath}` }, { label: "Cancel" }], {
+            title: "Output for this prompt already exists",
             ignoreFocusOut: true,
         });
-        if (!option || option.label === "Do nothing") {
+        if (!option || option.label === "Cancel") {
             return;
         }
         if (option.label === "Overwrite") {
             await vscode.workspace.fs.delete(uri);
+        }
+        else {
+            await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
         }
     }
     catch (e) {
         // File does not exist
     }
 
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
+
 
     const doc = await vscode.workspace.openTextDocument(uri);
 
