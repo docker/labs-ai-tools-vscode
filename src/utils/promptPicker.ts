@@ -152,8 +152,9 @@ export const showPromptPicker = () =>
             }
         });
         quickPick.onDidAccept(() => {
-            resolve(quickPick.selectedItems[0]);
+            const selectedItem = quickPick.selectedItems[0];
             quickPick.hide();
+            resolve(selectedItem);
         });
         quickPick.onDidHide(() => {
             resolve(undefined);

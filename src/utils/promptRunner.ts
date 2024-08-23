@@ -1,7 +1,8 @@
 import { spawn } from "child_process";
 import { window } from "vscode";
+const output = window.createOutputChannel("Docker Labs: AI Tools");
 
-export const getRunArgs = (promptRef: string, projectDir: string, username: string, platform: string, render = false) => {
+export const getRunArgs = (promptRef: string, projectDir: string, username: string, platform: string, pat: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
     let promptArgs: string[] = ["--prompts", promptRef];
     let mountArgs: string[] = [];
@@ -29,54 +30,66 @@ export const getRunArgs = (promptRef: string, projectDir: string, username: stri
         "--user", username,
         "--platform", platform,
         ...promptArgs,
-        '--jsonrpc'
+        '--jsonrpc',
+        '--pat', pat
     ];
-
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
 
 const runAndStream = async (command: string, args: string[], callback: (json: any) => void) => {
+    output.appendLine(`Running ${command} with args ${args.join(' ')}`);
     const child = spawn(command, args);
 
-    const onOutput = ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
-        if (stdout && stdout.startsWith('{')) {
-            let rpcMessage = stdout.split('}Content-Length:')[0];
-            if (!rpcMessage.endsWith('}}')) {
-                rpcMessage += '}';
+    const onChildSTDIO = ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
+        if (stdout && stdout.startsWith('Content-Length:')) {
+
+            const rpcMessages = stdout.split('Content-Length: ').filter(Boolean).map(rpcMessage => rpcMessage.trim().slice(rpcMessage.indexOf('{')));
+
+            for (const rpcMessage of rpcMessages) {
+                let json;
+                try {
+                    json = JSON.parse(rpcMessage);
+                } catch (e) {
+                    console.error(`Failed to parse JSON: ${rpcMessage}, ${e}`);
+                    child.kill();
+                }
+                callback(json);
+
+
             }
-            const json = JSON.parse(rpcMessage);
-            callback(json);
         }
-        if (stderr) {
-            callback({ method: 'message', params: { debug: stderr } });
+        else if (stderr) {
+            callback({ method: 'error', params: { content: stderr } });
+        }
+        else {
+            callback({ method: 'message', params: { content: stdout } });
         }
     };
-
     return new Promise((resolve, reject) => {
         child.stdout.on('data', (data) => {
-            onOutput({ stdout: data.toString(), stderr: '' });
+            onChildSTDIO({ stdout: data.toString(), stderr: '' });
         });
         child.stderr.on('data', (data) => {
-            onOutput({ stderr: data.toString(), stdout: '' });
+            onChildSTDIO({ stderr: data.toString(), stdout: '' });
         });
         child.on('close', (code) => {
             callback({ method: 'message', params: { debug: `child process exited with code ${code}` } });
             resolve(code);
         });
         child.on('error', (err) => {
-            callback({ method: 'error', params: { content: err } });
+            callback({ method: 'error', params: { content: JSON.stringify(err) } });
             reject(err);
         });
     });
 };
 
-export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, callback: (json: any) => void) => {
-    const args = getRunArgs(promptArg!, projectDir!, username, platform);
+export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => void) => {
+    const args = getRunArgs(promptArg!, projectDir!, username, platform, pat);
     return runAndStream("docker", args, callback);
 };
 
 export const writeKeyToVolume = async (key: string) => {
-    const output = window.createOutputChannel("Docker Labs: AI Tools");
+
     const args1 = ["pull", "vonwig/function_write_files"];
     const args2 = [
         "run",

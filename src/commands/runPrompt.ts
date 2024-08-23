@@ -6,14 +6,13 @@ import { showPromptPicker } from "../utils/promptPicker";
 import { preparePromptFile } from "../utils/promptFilename";
 import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
 import { verifyHasOpenAIKey } from "./setOpenAIKey";
+import { getCredential } from "../utils/credential";
 
 const START_DOCKER_COMMAND = {
     'win32': 'Start-Process -NoNewWindow -Wait -FilePath "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
     'darwin': 'open -a Docker',
     'linux': 'systemctl --user start docker-desktop',
 };
-
-const DEFAULT_USER = "local-user";
 
 const checkDockerDesktop = () => {
     // Coerce the error to have an exit code
@@ -81,7 +80,7 @@ const getWorkspaceFolder = async () => {
 
 // When running local workspace as a prompt, we need to use a config value to determine the project path
 const checkHasInputWorkspace = async () => {
-    const existingPath = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('project-dir');
+    const existingPath = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('project_dir');
     if (!existingPath) {
         const resp = await vscode.window.showErrorMessage("No project path set in settings", "Set project path", "Cancel");
         if (resp === "Set project path") {
@@ -92,7 +91,7 @@ const checkHasInputWorkspace = async () => {
                 title: "Select project path",
             });
             if (resp) {
-                await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('project-dir', resp[0].fsPath);
+                await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('project_dir', resp[0].fsPath);
                 vscode.window.showInformationMessage(`Project path set to ${resp[0].fsPath}. You can change this in settings.`);
                 return resp[0].fsPath;
             }
@@ -130,6 +129,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, localWorkspace?: boolean
         return;
     }
 
+    progress.report({ increment: 5, message: "Checking for project path..." });
     if (localWorkspace) {
         const projectPath = await checkHasInputWorkspace();
         if (!projectPath) {
@@ -141,28 +141,74 @@ export const runPrompt: (secrets: vscode.SecretStorage, localWorkspace?: boolean
     progress.report({ increment: 5, message: "Writing prompt output file..." });
     const apiKey = await secrets.get("openAIKey");
 
-
-
     const { editor, doc } = (await preparePromptFile(workspaceFolder, promptOption.id) || {});
 
     if (!editor || !doc) {
         return;
     }
 
-    const writeToEditor = (text: string) => {
+    const writeToEditor = (text: string, range?: vscode.Range) => {
         const edit = new vscode.WorkspaceEdit();
-        edit.insert(doc.uri, new vscode.Position(doc.lineCount, 0), text);
+        if (range) {
+            edit.replace(doc.uri, range, text);
+        }
+        else {
+            edit.insert(doc.uri, new vscode.Position(doc.lineCount, 0), text);
+        }
         return vscode.workspace.applyEdit(edit);
     };
 
     progress.report({ increment: 5, message: "Detecting docker desktop token" });
 
+    const { Username, Password } = await getCredential("docker");
+
     try {
         progress.report({ increment: 5, message: "Mounting secrets..." });
         await writeKeyToVolume(apiKey!);
         progress.report({ increment: 5, message: "Running..." });
-        await spawnPromptImage(promptOption.id, localWorkspace ? vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('workspace-path') || '' : workspaceFolder.uri.fsPath, DEFAULT_USER, process.platform, (json) => {
-            writeToEditor(JSON.stringify(json, null, 2));
+        const ranges: Record<string, vscode.Range> = {};
+        const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
+        await spawnPromptImage(promptOption.id, localWorkspace ? (await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('project_dir')) || '' : workspaceFolder.uri.fsPath, Username, process.platform, Password, (json) => {
+            if (json.method === 'functions') {
+                const functions = json.params;
+                for (const func of functions) {
+                    const { id, function: { arguments: args } } = func;
+                    const params_str = args;
+                    let functionRange = ranges[id] || getBaseFunctionRange();
+                    if (functionRange.isSingleLine) {
+                        // Add function to the end of the file and update the range
+                        writeToEditor(params_str);
+                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
+                    }
+                    else {
+                        // Replace existing function and update the range
+                        writeToEditor(params_str, functionRange);
+                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
+                    }
+                    ranges[id] = functionRange;
+                }
+            }
+            else if (json.method === 'message') {
+                writeToEditor(json.params.content).then(() => {
+                    if (json.params.debug) {
+                        const backticks = '\n```\n';
+                        writeToEditor(`${backticks}# Debug\n${json.params.debug}\n${backticks}\n`);
+                        // Fold the section
+                        vscode.commands.executeCommand('workbench.action.editor.toggleFold');
+
+                    }
+                });
+            }
+            else if (json.method === 'prompts') {
+                const promptHeader = '# Rendered Prompt\n\n';
+                if (!doc.getText().includes(promptHeader)) {
+                    writeToEditor(promptHeader);
+                }
+                writeToEditor(json.params.messages.map((m: any) => JSON.stringify(m, null, 2)).join('\n') + '\n');
+            }
+            else {
+                writeToEditor(JSON.stringify(json, null, 2));
+            }
         });
         await doc.save();
     } catch (e: unknown) {

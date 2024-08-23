@@ -6,9 +6,11 @@ export const generateFriendlyPromptName = (promptType: string) => {
     if (friendlyPromptName.startsWith("github:")) {
         const repo = friendlyPromptName.split("github:")[1].split("?")[0].replace("/", "-");
         const path = friendlyPromptName.split("path=")[1].split("&")[0].replaceAll("/", "-");
-        friendlyPromptName = `gh-${repo}-${path || 'root'}`;
+        friendlyPromptName = `${repo}-${path || 'root'}`;
     }
-
+    else if (friendlyPromptName.startsWith("local:")) {
+        friendlyPromptName = friendlyPromptName.split("local://")[1].replaceAll("/", "-");
+    }
     return friendlyPromptName;
 };
 
@@ -17,7 +19,7 @@ export const preparePromptFile = async (workspaceFolder: vscode.WorkspaceFolder,
     const friendlyPromptName = generateFriendlyPromptName(promptType);
 
     const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + `/prompt-resp-${friendlyPromptName}.md`
+        workspaceFolder.uri.fsPath + `/${friendlyPromptName}.md`
     );
 
     try {
@@ -30,7 +32,12 @@ export const preparePromptFile = async (workspaceFolder: vscode.WorkspaceFolder,
             return;
         }
         if (option.label === "Overwrite") {
-            await vscode.workspace.fs.delete(uri);
+            const edit = new vscode.WorkspaceEdit();
+            const startPosition = new vscode.Position(0, 0);
+            const endPosition = new vscode.Position(1000000, 0);
+            // Strip contents of file
+            edit.replace(uri, new vscode.Range(startPosition, endPosition), "");
+            await vscode.workspace.applyEdit(edit);
         }
         else {
             await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(""));
@@ -41,6 +48,7 @@ export const preparePromptFile = async (workspaceFolder: vscode.WorkspaceFolder,
         edit.createFile(uri);
         await vscode.workspace.applyEdit(edit);
     }
+
     const doc = await vscode.workspace.openTextDocument(uri);
 
     const editor = await vscode.window.showTextDocument(doc);
