@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
 	});
 
 	test('generateFriendlyPromptName', () => {
-		assert.strictEqual(generateFriendlyPromptName("github:docker/labs-ai-tools-vscode?ref=main&path=prompts/git_smoosh"), "gh-docker-labs-ai-tools-vscode-prompts-git_smoosh");
+		assert.strictEqual(generateFriendlyPromptName("github:docker/labs-ai-tools-vscode?ref=main&path=prompts/git_smoosh"), "docker-labs-ai-tools-vscode-prompts-git_smoosh");
 		assert.strictEqual(generateFriendlyPromptName("npm"), "npm");
 	});
 
