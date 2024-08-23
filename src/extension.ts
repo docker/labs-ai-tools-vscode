@@ -7,6 +7,8 @@ import { nativeClient } from './utils/lsp';
 import { deletePrompt, savePrompt } from './commands/manageSavedPrompts';
 import { spawnSync } from 'child_process';
 
+export let ctx: vscode.ExtensionContext;
+
 export const workspaceCommands = {} as {
 	[id: string]:
 	{
@@ -19,30 +21,9 @@ export const extensionId = 'docker.labs-ai-tools-vscode';
 
 export const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
 
-const MAX_POLL = 10;
-
-export const verifyHasOpenAIKey = async (secrets: vscode.SecretStorage, didRunAutomatically = false) => {
-	const openAIKey = await secrets.get('openAIKey');
-	if (!openAIKey) {
-		await vscode.window.showErrorMessage('Model provider set to OpenAI, but no OpenAI API key found in secrets.', {
-			modal: didRunAutomatically
-		}, 'Set Key', 'Use Ollama',).then(
-			async (res) => {
-				if (res === 'Set Key') {
-					await setOpenAIKey(secrets, true);
-				}
-				else if (res === 'Use Ollama') {
-					await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('openai-base', 'Ollama');
-				}
-				else {
-					return false;
-				}
-			});
-	}
-};
 
 export async function activate(context: vscode.ExtensionContext) {
-
+	ctx = context;
 	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-openai-api-key', () => {
 		setOpenAIKey(context.secrets);
 	});
@@ -51,11 +32,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	spawnSync('docker', ['pull', "vonwig/prompts:latest"]);
 
-	let runPromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.generate', () => runPrompt(context.secrets));
+	let runPromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-prompt', () => runPrompt(context.secrets));
 
 	context.subscriptions.push(runPromptCommand);
 
-	let runBoundCommands = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run', runHotCommand);
+	let runBoundCommands = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-commands', runHotCommand);
 
 	context.subscriptions.push(runBoundCommands);
 
@@ -67,9 +48,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(deletePromptCommand);
 
-	if (vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('openai-base') === 'OpenAI') {
-		void verifyHasOpenAIKey(context.secrets);
-	}
+	let runWorkspaceAsPrompt = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-workspace-as-prompt', () => runPrompt(context.secrets, true));
+
+	context.subscriptions.push(runWorkspaceAsPrompt);
 
 	nativeClient.onNotification("$bind/register", async (args: {
 		uri: string, blocks: {

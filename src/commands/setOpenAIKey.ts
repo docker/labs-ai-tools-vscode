@@ -36,3 +36,23 @@ export const setOpenAIKey = async (secrets: SecretStorage, skipQuickPick: boolea
     }
 
 };
+
+
+export const verifyHasOpenAIKey = async (secrets: SecretStorage, didRunAutomatically = false) => {
+    const openAIKey = await secrets.get('openAIKey');
+    if (!openAIKey) {
+        return await window.showErrorMessage('Model provider set to OpenAI, but no OpenAI API key found in secrets.', {
+            modal: didRunAutomatically
+        }, 'Set Key',).then(
+            async (res) => {
+                if (res === 'Set Key') {
+                    await setOpenAIKey(secrets, true);
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            });
+    }
+    return true;
+};

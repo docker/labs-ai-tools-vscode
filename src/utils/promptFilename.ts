@@ -37,11 +37,10 @@ export const preparePromptFile = async (workspaceFolder: vscode.WorkspaceFolder,
         }
     }
     catch (e) {
-        // File does not exist
+        const edit = new vscode.WorkspaceEdit();
+        edit.createFile(uri);
+        await vscode.workspace.applyEdit(edit);
     }
-
-
-
     const doc = await vscode.workspace.openTextDocument(uri);
 
     const editor = await vscode.window.showTextDocument(doc);

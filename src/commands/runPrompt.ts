@@ -2,10 +2,10 @@ import {
     spawnSync,
 } from "child_process";
 import * as vscode from "vscode";
-import { verifyHasOpenAIKey } from "../extension";
 import { showPromptPicker } from "../utils/promptPicker";
 import { preparePromptFile } from "../utils/promptFilename";
-import { spawnPromptImage } from "../utils/promptRunner";
+import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
+import { verifyHasOpenAIKey } from "./setOpenAIKey";
 
 const START_DOCKER_COMMAND = {
     'win32': 'Start-Process -NoNewWindow -Wait -FilePath "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
@@ -15,8 +15,7 @@ const START_DOCKER_COMMAND = {
 
 const DEFAULT_USER = "local-user";
 
-export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
-
+const checkDockerDesktop = () => {
     // Coerce the error to have an exit code
     type DockerSpawnError = Error & { code: number };
 
@@ -38,7 +37,6 @@ export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withPr
 
         // @ts-expect-error
     } catch (e: DockerSpawnError) {
-
         const platform = process.platform;
         const actionItems = e.code !== -1 ? [(platform in START_DOCKER_COMMAND ? "Start Docker" : "Try again")] : ["Install Docker Desktop", "Try again"];
         return vscode.window.showErrorMessage("Error starting Docker", { modal: true, detail: (e as DockerSpawnError).toString() }, ...actionItems).then(async (value) => {
@@ -49,17 +47,18 @@ export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withPr
                     vscode.env.openExternal(vscode.Uri.parse("https://www.docker.com/products/docker-desktop"));
                     return;
                 case "Try again":
-                    return vscode.commands.executeCommand("docker.labs-ai-tools-vscode.generate");
+                    return 'RETRY';
             }
         });
     }
+};
 
-    progress.report({ increment: 0, message: "Starting..." });
-
+const getWorkspaceFolder = async () => {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     if (!workspaceFolders) {
-        return vscode.window.showErrorMessage("No workspace open");
+        await vscode.window.showErrorMessage("No workspace open");
+        return;
     }
 
     let workspaceFolder = workspaceFolders[0];
@@ -71,20 +70,78 @@ export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withPr
             ignoreFocusOut: true,
         });
         if (!option) {
-            return vscode.window.showErrorMessage("No workspace selected");
+            await vscode.window.showErrorMessage("No workspace selected");
+            return;
         }
         workspaceFolder = workspaceFolders[option.index];
     }
 
-    await verifyHasOpenAIKey(secrets, true);
+    return workspaceFolder;
+};
 
-    const promptOption = await showPromptPicker();
+// When running local workspace as a prompt, we need to use a config value to determine the project path
+const checkHasInputWorkspace = async () => {
+    const existingPath = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('project-dir');
+    if (!existingPath) {
+        const resp = await vscode.window.showErrorMessage("No project path set in settings", "Set project path", "Cancel");
+        if (resp === "Set project path") {
+            const resp = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                title: "Select project path",
+            });
+            if (resp) {
+                await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('project-dir', resp[0].fsPath);
+                vscode.window.showInformationMessage(`Project path set to ${resp[0].fsPath}. You can change this in settings.`);
+                return resp[0].fsPath;
+            }
+        }
+        return;
+    }
+    return existingPath;
+};
 
+export const runPrompt: (secrets: vscode.SecretStorage, localWorkspace?: boolean) => void = (secrets: vscode.SecretStorage, localWorkspace = false) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
+
+    const result = await checkDockerDesktop();
+    if (result === 'RETRY') {
+        return runPrompt(secrets, localWorkspace);
+    }
+
+    progress.report({ increment: 0, message: "Starting..." });
+    progress.report({ increment: 5, message: "Checking for OpenAI key..." });
+
+    const hasOpenAIKey = await verifyHasOpenAIKey(secrets, true);
+    if (!hasOpenAIKey) {
+        return;
+    }
+
+    progress.report({ increment: 5, message: "Checking for workspace..." });
+    const workspaceFolder = await getWorkspaceFolder();
+    if (!workspaceFolder) {
+        return;
+    }
+
+
+    progress.report({ increment: 5, message: "Checking for prompt..." });
+    const promptOption = localWorkspace ? { id: `local://${workspaceFolder.uri.fsPath}` } : await showPromptPicker();
     if (!promptOption) {
         return;
     }
 
-    let apiKey = await secrets.get("openAIKey");
+    if (localWorkspace) {
+        const projectPath = await checkHasInputWorkspace();
+        if (!projectPath) {
+            vscode.window.showErrorMessage("No project path set in settings");
+            return;
+        }
+    }
+
+    progress.report({ increment: 5, message: "Writing prompt output file..." });
+    const apiKey = await secrets.get("openAIKey");
+
+
 
     const { editor, doc } = (await preparePromptFile(workspaceFolder, promptOption.id) || {});
 
@@ -92,23 +149,26 @@ export const runPrompt = (secrets: vscode.SecretStorage) => vscode.window.withPr
         return;
     }
 
+    const writeToEditor = (text: string) => {
+        const edit = new vscode.WorkspaceEdit();
+        edit.insert(doc.uri, new vscode.Position(doc.lineCount, 0), text);
+        return vscode.workspace.applyEdit(edit);
+    };
+
     progress.report({ increment: 5, message: "Detecting docker desktop token" });
 
     try {
+        progress.report({ increment: 5, message: "Mounting secrets..." });
+        await writeKeyToVolume(apiKey!);
         progress.report({ increment: 5, message: "Running..." });
-        await spawnPromptImage(promptOption.id, workspaceFolder.uri.fsPath, DEFAULT_USER, process.platform, (json) => {
-
+        await spawnPromptImage(promptOption.id, localWorkspace ? vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('workspace-path') || '' : workspaceFolder.uri.fsPath, DEFAULT_USER, process.platform, (json) => {
+            writeToEditor(JSON.stringify(json, null, 2));
         });
         await doc.save();
     } catch (e: unknown) {
         e = e as Error;
         void vscode.window.showErrorMessage("Error running prompt");
-        await editor.edit((edit) => {
-            edit.insert(
-                new vscode.Position(editor.document.lineCount, 0),
-                '```json\n' + (e as Error).toString() + '\n```'
-            );
-        });
+        writeToEditor('```json\n' + (e as Error).toString() + '\n```');
         return;
     }
 });

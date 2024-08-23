@@ -1,4 +1,5 @@
 import { QuickPickItem, QuickPickItemKind, ThemeIcon, commands, window, workspace } from "vscode";
+import { ctx } from "../extension";
 
 // https://github.com/owner/repo/tree/ref/path
 // https://github.com/docker/labs-ai-tools-vscode/tree/main/prompts/docker
@@ -76,9 +77,9 @@ export interface PromptTypeOption extends QuickPickItem {
     saved?: boolean;
 }
 
-export const showPromptPicker = (skipBuiltins = false) =>
+export const showPromptPicker = () =>
     new Promise<PromptTypeOption | undefined>((resolve) => {
-        let promptTypeItems: PromptTypeOption[] = [];
+        const savedPrompts = ctx.globalState.get('savedPrompts', []) as string[];
         const getDefaultItems = () => {
             const defaultItems = [
                 {
@@ -86,7 +87,12 @@ export const showPromptPicker = (skipBuiltins = false) =>
                     label: "Saved",
                     id: "separator"
                 } as PromptTypeOption,
-                ...promptTypeItems.filter(i => i.saved),
+                ...savedPrompts.map(p => ({
+                    id: p,
+                    label: p.split('/').reverse()[0],
+                    detail: p,
+
+                })),
             ];
 
             return defaultItems;
@@ -108,7 +114,7 @@ export const showPromptPicker = (skipBuiltins = false) =>
                     description: "github:owner/repo?ref=main&path=your/prompts/dir",
                     alwaysShow: true,
                     // Button for saving command to workspace config
-                    buttons: skipBuiltins ? [] : [{
+                    buttons: [{
                         iconPath: new ThemeIcon('save'),
                         tooltip: 'Save command to workspace configuration'
                     }]
@@ -124,7 +130,7 @@ export const showPromptPicker = (skipBuiltins = false) =>
                     description: "Parsed GitHub URL",
                     alwaysShow: true,
                     // Button for saving command to workspace config
-                    buttons: skipBuiltins ? [] : [{
+                    buttons: [{
                         iconPath: new ThemeIcon('save'),
                         tooltip: 'Save command to workspace configuration'
                     }]

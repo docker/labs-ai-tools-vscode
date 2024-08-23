@@ -23,12 +23,12 @@ const dockerrunner = {
         "-l",
         'com.docker.lsp=true',
         "-l",
-        'com.docker.lsp.extension=labs-ai-tools-vscode',
+        'com.docker.lsp.extension=labs-make-runbook',
         "docker/lsp",
         "--workspace",
         "/docker",
         "--profile",
-        "labs-ai-tools-vscode",
+        "labs-make-runbook",
     ],
 };
 

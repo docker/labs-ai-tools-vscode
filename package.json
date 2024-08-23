@@ -53,6 +53,10 @@
       {
         "command": "docker.labs-ai-tools-vscode.delete-prompt",
         "title": "Delete a saved prompt"
+      },
+      {
+        "command": "docker.labs-ai-tools-vscode.run-workspace-as-prompt",
+        "title": "Run workspace as a prompt"
       }
     ]
   },
