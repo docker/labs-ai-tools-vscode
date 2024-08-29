@@ -5,10 +5,17 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { generateFriendlyPromptName } from '../utils/promptFilename';
 import { parseGitHubRef, parseGitHubURL } from '../utils/promptPicker';
+import semver from 'semver';
 // import * as myExtension from '../../extension';
 
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
+
+	test('Extension is valid semver', () => {
+		const version = vscode.extensions.getExtension('docker.labs-ai-tools-vscode')?.packageJSON.version;
+		assert.notStrictEqual(version, undefined);
+		assert.strictEqual(semver.valid(version), version);
+	});
 
 	test('Sample test', () => {
 		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
@@ -73,13 +80,5 @@ suite('Extension Test Suite', () => {
 			const parsedRef = parseGitHubRef(ref)!;
 			assert.strictEqual(parsedURL.toRef(), parsedRef.toRef());
 		});
-	});
-
-	test('refToURL', () => {
-
-	});
-
-	test('refToString', () => {
-
 	});
 });

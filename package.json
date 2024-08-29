@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.0.20",
+  "version": "0.0.11",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -72,6 +72,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/semver": "^7.5.8",
     "@types/vscode": "^1.88.0",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
@@ -82,7 +83,7 @@
     "vsce": "^2.15.0"
   },
   "dependencies": {
-    "semver": "^7.5.2",
+    "semver": "^7.6.3",
     "vscode-languageclient": "^8.1.0"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
