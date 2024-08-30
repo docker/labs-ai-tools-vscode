@@ -14,7 +14,7 @@ export const generateFriendlyPromptName = (promptType: string) => {
     return friendlyPromptName;
 };
 
-export const preparePromptFile = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
+export const createOutputBuffer = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
 
     const friendlyPromptName = generateFriendlyPromptName(promptType);
 

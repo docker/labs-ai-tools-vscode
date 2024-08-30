@@ -35,7 +35,7 @@ const getLatestVersion = async () => {
 };
 
 
-const checkVersion = (context: vscode.ExtensionContext) => {
+const checkVersion = () => {
 	const currentVersion = packageJSON.version;
 	void getLatestVersion().then((latestVersion) => {
 		if (!latestVersion) {
@@ -74,13 +74,12 @@ const checkOutdatedVersionInstalled = async () => {
 
 export async function activate(context: vscode.ExtensionContext) {
 	checkOutdatedVersionInstalled();
-	checkVersion(context);
+	checkVersion();
 	ctx = context;
 	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-openai-api-key', () => {
 		setOpenAIKey(context.secrets);
 	});
 	context.subscriptions.push(setOpenAIKeyCommand);
-
 
 	spawnSync('docker', ['pull', "vonwig/prompts:latest"]);
 

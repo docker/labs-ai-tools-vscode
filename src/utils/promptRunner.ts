@@ -19,8 +19,9 @@ export const getRunArgs = (promptRef: string, projectDir: string, username: stri
         'run',
         '--rm',
         '-v', '/var/run/docker.sock:/var/run/docker.sock',
-        '-v', 'openai_key:/root',
-        '--mount', 'type=volume,source=docker-prompts,target=/prompts'
+        '-v', 'openai_key:/secret',
+        '--mount', 'type=volume,source=docker-prompts,target=/prompts',
+        '-e', 'OPENAI_API_KEY_LOCATION=/secret',
     ];
 
     const runArgs: string[] = render ? [] : [
@@ -31,7 +32,7 @@ export const getRunArgs = (promptRef: string, projectDir: string, username: stri
         "--platform", platform,
         ...promptArgs,
         '--jsonrpc',
-        '--pat', pat
+        ...(pat ? ['--pat', pat] : [])
     ];
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
@@ -94,8 +95,8 @@ export const writeKeyToVolume = async (key: string) => {
     const args2 = [
         "run",
         "-v",
-        "openai_key:/root",
-        "--workdir", "/root",
+        "openai_key:/secret",
+        "--workdir", "/secret",
         "vonwig/function_write_files",
         `'` + JSON.stringify({ files: [{ path: ".openai-api-key", content: key, executable: false }] }) + `'`
     ];

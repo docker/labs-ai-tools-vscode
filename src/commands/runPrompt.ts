@@ -3,7 +3,7 @@ import {
 } from "child_process";
 import * as vscode from "vscode";
 import { showPromptPicker } from "../utils/promptPicker";
-import { preparePromptFile } from "../utils/promptFilename";
+import { createOutputBuffer } from "../utils/promptFilename";
 import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
 import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { getCredential } from "../utils/credential";
@@ -124,7 +124,13 @@ export const runPrompt: (secrets: vscode.SecretStorage, localWorkspace?: boolean
 
 
     progress.report({ increment: 5, message: "Checking for prompt..." });
-    const promptOption = localWorkspace ? { id: `local://${workspaceFolder.uri.fsPath}` } : await showPromptPicker();
+
+    let promptDir = workspaceFolder.uri.fsPath;
+
+
+    let promptOption = localWorkspace ? { id: `local://${promptDir}` } : await showPromptPicker();
+
+
     if (!promptOption) {
         return;
     }
@@ -141,7 +147,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, localWorkspace?: boolean
     progress.report({ increment: 5, message: "Writing prompt output file..." });
     const apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = (await preparePromptFile(workspaceFolder, promptOption.id) || {});
+    const { editor, doc } = (await createOutputBuffer(workspaceFolder, promptOption.id) || {});
 
     if (!editor || !doc) {
         return;
