@@ -1,10 +1,11 @@
 import { spawn } from "child_process";
-import { window } from "vscode";
+import { window, workspace } from "vscode";
 const output = window.createOutputChannel("Docker Labs: AI Tools");
 
 export const getRunArgs = (promptRef: string, projectDir: string, username: string, platform: string, pat: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
     const isMarkdown = promptRef.toLowerCase().endsWith('.md');
+    const threadId = workspace.getConfiguration('docker.labs-ai-tools-vscode').get('thread_id') as string | undefined;
     let promptArgs: string[] = ["--prompts", promptRef];
     let mountArgs: string[] = ["--mount", `type=bind,source=${projectDir},target=/app/${promptRef}`];
 
@@ -33,8 +34,10 @@ export const getRunArgs = (promptRef: string, projectDir: string, username: stri
         "--platform", platform,
         ...promptArgs,
         '--jsonrpc',
-        ...(pat ? ['--pat', pat] : [])
+        ...(pat ? ['--pat', pat] : []),
+        ...(threadId ? ['--thread-id', threadId] : []),
     ];
+
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
 

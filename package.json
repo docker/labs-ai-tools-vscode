@@ -27,9 +27,9 @@
           "type": "string",
           "description": "Project directory to run AI prompts within"
         },
-        "docker.labs-ai-tools-vscode.openai_api_key": {
+        "docker.labs-ai-tools-vscode.thread_id": {
           "type": "string",
-          "description": "OpenAI API key"
+          "description": "If set, will persist the conversation's Docker volume tagged with this thread ID."
         }
       }
     },

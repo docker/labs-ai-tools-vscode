@@ -157,7 +157,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
 
     const apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = (await createOutputBuffer(workspaceFolder, promptOption.id) || {});
+    const { editor, doc } = await createOutputBuffer();
 
     if (!editor || !doc) {
         return;
@@ -225,7 +225,6 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                 await writeToEditor(JSON.stringify(json, null, 2));
             }
         });
-        await doc.save();
     } catch (e: unknown) {
         e = e as Error;
         void vscode.window.showErrorMessage("Error running prompt");
