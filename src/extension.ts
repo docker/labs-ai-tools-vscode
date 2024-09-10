@@ -83,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	spawnSync('docker', ['pull', "vonwig/prompts:latest"]);
 
-	let runPromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-prompt', () => runPrompt(context.secrets));
+	let runPromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-prompt', () => runPrompt(context.secrets, 'remote'));
 
 	context.subscriptions.push(runPromptCommand);
 
@@ -99,9 +99,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(deletePromptCommand);
 
-	let runWorkspaceAsPrompt = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-workspace-as-prompt', () => runPrompt(context.secrets, true));
+	let runWorkspaceAsPrompt = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-workspace-as-prompt', () => runPrompt(context.secrets, 'local-dir'));
 
 	context.subscriptions.push(runWorkspaceAsPrompt);
+
+	let runFileAsPrompt = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-file-as-prompt', () => runPrompt(context.secrets, 'local-file'));
+
+	context.subscriptions.push(runFileAsPrompt);
 
 	nativeClient.onNotification("$bind/register", async (args: {
 		uri: string, blocks: {

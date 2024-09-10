@@ -4,14 +4,15 @@ const output = window.createOutputChannel("Docker Labs: AI Tools");
 
 export const getRunArgs = (promptRef: string, projectDir: string, username: string, platform: string, pat: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
+    const isMarkdown = promptRef.toLowerCase().endsWith('.md');
     let promptArgs: string[] = ["--prompts", promptRef];
-    let mountArgs: string[] = [];
+    let mountArgs: string[] = ["--mount", `type=bind,source=${projectDir},target=/app/${promptRef}`];
 
     if (isLocal) {
         const localPromptPath = promptRef.replace('local://', '');
         const pathSeparator = platform === 'win32' ? '\\' : '/';
         promptRef = localPromptPath.split(pathSeparator).pop() || 'unknown-local-prompt';
-        promptArgs = ["--prompts-dir", `/app/${promptRef}`];
+        promptArgs = [isMarkdown ? "--prompts-dir" : "--prompts-file", `/app/${promptRef}`];
         mountArgs = ["--mount", `type=bind,source=${localPromptPath},target=/app/${promptRef}`];
     }
 
@@ -37,15 +38,17 @@ export const getRunArgs = (promptRef: string, projectDir: string, username: stri
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
 
-const runAndStream = async (command: string, args: string[], callback: (json: any) => void) => {
+const runAndStream = async (command: string, args: string[], callback: (json: any) => Promise<any>) => {
     output.appendLine(`Running ${command} with args ${args.join(' ')}`);
     const child = spawn(command, args);
+    let out = '';
 
-    const onChildSTDIO = ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
+    const onChildSTDIO = async ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
+        if (stdout) {
+            out += stdout;
+        }
         if (stdout && stdout.startsWith('Content-Length:')) {
-
             const rpcMessages = stdout.split('Content-Length: ').filter(Boolean).map(rpcMessage => rpcMessage.trim().slice(rpcMessage.indexOf('{')));
-
             for (const rpcMessage of rpcMessages) {
                 let json;
                 try {
@@ -54,9 +57,7 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
                     console.error(`Failed to parse JSON: ${rpcMessage}, ${e}`);
                     child.kill();
                 }
-                callback(json);
-
-
+                await callback(json);
             }
         }
         else if (stderr) {
@@ -84,8 +85,9 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
     });
 };
 
-export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => void) => {
+export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => Promise<void>) => {
     const args = getRunArgs(promptArg!, projectDir!, username, platform, pat);
+    callback({ method: 'message', params: { debug: `Running ${args.join(' ')}` } });
     return runAndStream("docker", args, callback);
 };
 
@@ -100,7 +102,7 @@ export const writeKeyToVolume = async (key: string) => {
         "vonwig/function_write_files",
         `'` + JSON.stringify({ files: [{ path: ".openai-api-key", content: key, executable: false }] }) + `'`
     ];
-    const callback = (json: any) => {
+    const callback = async (json: any) => {
         output.appendLine(JSON.stringify(json, null, 2));
     };
     await runAndStream("docker", args1, callback);

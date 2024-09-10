@@ -1,3 +1,4 @@
+import path from "path";
 import * as vscode from "vscode";
 
 export const generateFriendlyPromptName = (promptType: string) => {
@@ -9,17 +10,23 @@ export const generateFriendlyPromptName = (promptType: string) => {
         friendlyPromptName = `${repo}-${path || 'root'}`;
     }
     else if (friendlyPromptName.startsWith("local:")) {
-        friendlyPromptName = friendlyPromptName.split("local://")[1].replaceAll("/", "-");
+        const delim = process.platform === "win32" ? "\\" : "/";
+        friendlyPromptName = friendlyPromptName.split("local://")[1].split(delim).reverse()[0];
+        friendlyPromptName = 'local-' + friendlyPromptName;
     }
     return friendlyPromptName;
 };
 
-export const createOutputBuffer = async (workspaceFolder: vscode.WorkspaceFolder, promptType: string) => {
+export const createOutputBuffer = async (workspaceFolder: vscode.WorkspaceFolder | undefined, promptType: string) => {
 
     const friendlyPromptName = generateFriendlyPromptName(promptType);
 
     const uri = vscode.Uri.file(
-        workspaceFolder.uri.fsPath + `/${friendlyPromptName}.md`
+        (
+            workspaceFolder?.uri.fsPath
+            ||
+            path.dirname(vscode.window.activeTextEditor?.document.uri.fsPath!)
+        ) + `/${friendlyPromptName}.md`.replace('.md.md', '.md')
     );
 
     try {

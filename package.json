@@ -36,7 +36,7 @@
     "commands": [
       {
         "command": "docker.labs-ai-tools-vscode.run-prompt",
-        "title": "Run a prompt"
+        "title": "Run saved prompt"
       },
       {
         "command": "docker.labs-ai-tools-vscode.run-commands",
@@ -55,8 +55,14 @@
         "title": "Delete a saved prompt"
       },
       {
-        "command": "docker.labs-ai-tools-vscode.run-workspace-as-prompt",
-        "title": "Run workspace as a prompt"
+        "command": "docker.labs-ai-tools-vscode.run-dir-as-prompt",
+        "title": "Run current file parent directory as a prompt",
+        "when": "editorLangId == markdown"
+      },
+      {
+        "command": "docker.labs-ai-tools-vscode.run-file-as-prompt",
+        "title": "Run current file as a prompt",
+        "when": "editorLangId == markdown"
       }
     ]
   },
