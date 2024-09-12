@@ -1,11 +1,14 @@
 import * as vscode from 'vscode';
-import { generateRunbook } from './commands/generateRunbook';
+import { runPrompt } from './commands/runPrompt';
 
 import { runHotCommand } from './commands/runHotCommand';
 import { setOpenAIKey } from './commands/setOpenAIKey';
 import { nativeClient } from './utils/lsp';
 import { deletePrompt, savePrompt } from './commands/manageSavedPrompts';
 import { spawnSync } from 'child_process';
+import semver from 'semver';
+
+export let ctx: vscode.ExtensionContext;
 
 export const workspaceCommands = {} as {
 	[id: string]:
@@ -15,61 +18,94 @@ export const workspaceCommands = {} as {
 	}[]
 };
 
-export const extensionId = 'docker.make-runbook';
+export const extensionId = 'docker.labs-ai-tools-vscode';
 
 export const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
 
-const MAX_POLL = 10;
 
-export const verifyHasOpenAIKey = async (secrets: vscode.SecretStorage, didRunAutomatically = false) => {
-	const openAIKey = await secrets.get('openAIKey');
-	if (!openAIKey) {
-		await vscode.window.showErrorMessage('Model provider set to OpenAI, but no OpenAI API key found in secrets.', {
-			modal: didRunAutomatically
-		}, 'Set Key', 'Use Ollama',).then(
-			async (res) => {
-				if (res === 'Set Key') {
-					await setOpenAIKey(secrets, true);
-				}
-				else if (res === 'Use Ollama') {
-					await vscode.workspace.getConfiguration('docker.make-runbook').update('openai-base', 'Ollama');
-				}
-				else {
-					return false;
-				}
-			});
+const getLatestVersion = async () => {
+	const resp = (await fetch(
+		"https://api.github.com/repos/docker/labs-make-runbook/releases/latest"
+	)
+		.then((r) => r.json())
+		.catch(() => null)) as { name: string } | null;
+
+	const version = resp?.name?.split("v")[1]?.split(" ")[0];
+	return version;
+};
+
+
+const checkVersion = () => {
+	const currentVersion = packageJSON.version;
+	void getLatestVersion().then((latestVersion) => {
+		if (!latestVersion) {
+			throw new Error("Failed to check for updates");
+		}
+		const updateAvail = semver.gt(latestVersion, currentVersion);
+		if (updateAvail && !currentVersion.includes('development')) {
+			void vscode.window.showWarningMessage(
+				`Docker AI Tools may be ready for an update. You have ${currentVersion} but latest is ${latestVersion}`,
+				"Update"
+			).then(
+				(a) =>
+					a &&
+					a === "Update" &&
+					vscode.env.openExternal(
+						vscode.Uri.parse(
+							"https://github.com/docker/labs-make-runbook/releases"
+						)
+					)
+			);
+		}
+	});
+};
+
+const checkOutdatedVersionInstalled = async () => {
+	const ext = vscode.extensions.getExtension('docker.make-runbook');
+	if (!ext) {
+		return;
 	}
+	await vscode.window.showErrorMessage("Outdated Extension", { modal: true, detail: "You have an outdated version of Docker AI Tools installed. Please uninstall labs-make-runbook and restart your editor." }, "Uninstall",).then((a) => {
+		if (a === "Uninstall") {
+			vscode.commands.executeCommand("workbench.extensions.action.showExtensionsWithIds", ['docker.make-runbook']);
+		}
+	});
 };
 
 export async function activate(context: vscode.ExtensionContext) {
-
-	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.make-runbook.set-openai-api-key', () => {
+	checkOutdatedVersionInstalled();
+	checkVersion();
+	ctx = context;
+	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-openai-api-key', () => {
 		setOpenAIKey(context.secrets);
 	});
-
 	context.subscriptions.push(setOpenAIKeyCommand);
 
 	spawnSync('docker', ['pull', "vonwig/prompts:latest"]);
 
-	let makeRunbook = vscode.commands.registerCommand('docker.make-runbook.generate', () => generateRunbook(context.secrets));
+	let runPromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-prompt', () => runPrompt(context.secrets, 'remote'));
 
-	context.subscriptions.push(makeRunbook);
+	context.subscriptions.push(runPromptCommand);
 
-	let runBoundCommands = vscode.commands.registerCommand('docker.make-runbook.run', runHotCommand);
+	let runBoundCommands = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-commands', runHotCommand);
 
 	context.subscriptions.push(runBoundCommands);
 
-	let savePromptCommand = vscode.commands.registerCommand('docker.make-runbook.save-prompt', savePrompt);
+	let savePromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.save-prompt', savePrompt);
 
 	context.subscriptions.push(savePromptCommand);
 
-	let deletePromptCommand = vscode.commands.registerCommand('docker.make-runbook.delete-prompt', deletePrompt);
+	let deletePromptCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.delete-prompt', deletePrompt);
 
 	context.subscriptions.push(deletePromptCommand);
 
-	if (vscode.workspace.getConfiguration('docker.make-runbook').get('openai-base') === 'OpenAI') {
-		void verifyHasOpenAIKey(context.secrets);
-	}
+	let runWorkspaceAsPrompt = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-workspace-as-prompt', () => runPrompt(context.secrets, 'local-dir'));
+
+	context.subscriptions.push(runWorkspaceAsPrompt);
+
+	let runFileAsPrompt = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.run-file-as-prompt', () => runPrompt(context.secrets, 'local-file'));
+
+	context.subscriptions.push(runFileAsPrompt);
 
 	nativeClient.onNotification("$bind/register", async (args: {
 		uri: string, blocks: {
@@ -79,13 +115,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	}) => {
 		const blocks = args.blocks;
 
-		const runbookURI = vscode.Uri.parse(args.uri);
+		const PromptRespURI = vscode.Uri.parse(args.uri);
 
-		workspaceCommands[runbookURI.fsPath] = blocks;
+		workspaceCommands[PromptRespURI.fsPath] = blocks;
 	});
 
 	nativeClient.onNotification("$terminal/run", async (args: { content: string }) => {
-		const terminal = vscode.window.createTerminal("Docker Runbook");
+		const terminal = vscode.window.createTerminal("Markdown Blocks");
 		terminal.sendText(args.content);
 		terminal.show();
 

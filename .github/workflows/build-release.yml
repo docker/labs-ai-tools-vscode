@@ -1,0 +1,32 @@
+name: Build extension on release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Set up Node.js"
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+
+      - name: "Install dependencies"
+        run: npm install
+      - name: "Build extension"
+        run: npm run package
+
+      - name: upload vsix
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: *.vsix
+          asset_name: ${{ github.event.release.tag_name }}.vsix
+          asset_content_type: application/vsix
