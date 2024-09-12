@@ -19,7 +19,7 @@ jobs:
       - name: "Install dependencies"
         run: npm install
       - name: "Build extension"
-        run: npm run package
+        run: npm run package labs-ai-tools-${{ github.event.release.tag_name }}.vsix
 
       - name: upload vsix
         uses: actions/upload-release-asset@v1
@@ -27,6 +27,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: *.vsix
+          asset_path: labs-ai-tools-${{ github.event.release.tag_name }}.vsix
           asset_name: ${{ github.event.release.tag_name }}.vsix
           asset_content_type: application/vsix
