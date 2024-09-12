@@ -18,8 +18,9 @@ jobs:
 
       - name: "Install dependencies"
         run: npm install
+
       - name: "Build extension"
-        run: npm run package ${{ github.event.release.tag_name }}
+        run: git stash && npm run package ${{ github.event.release.tag_name }} && git stash pop
 
       - name: upload vsix
         uses: actions/upload-release-asset@v1
