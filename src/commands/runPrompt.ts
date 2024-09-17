@@ -92,7 +92,7 @@ const checkHasInputWorkspace = async () => {
                 title: "Select project path",
             });
             if (resp) {
-                await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('project_dir', resp[0].fsPath);
+                await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('project_dir', resp[0].fsPath, true);
                 vscode.window.showInformationMessage(`Project path set to ${resp[0].fsPath}. You can change this in settings.`);
                 return resp[0].fsPath;
             }
