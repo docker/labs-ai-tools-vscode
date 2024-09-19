@@ -7,6 +7,7 @@ import { createOutputBuffer } from "../utils/promptFilename";
 import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
 import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { getCredential } from "../utils/credential";
+import { setProjectDir } from "./setProjectDir";
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -79,29 +80,6 @@ const getWorkspaceFolder = async () => {
     return workspaceFolder;
 };
 
-// When running local workspace as a prompt, we need to use a config value to determine the project path
-const checkHasInputWorkspace = async () => {
-    const existingPath = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get('project_dir') as string;
-    if (!existingPath) {
-        const resp = await vscode.window.showErrorMessage("No project path set in settings", "Set project path", "Cancel");
-        if (resp === "Set project path") {
-            const resp = await vscode.window.showOpenDialog({
-                canSelectFiles: false,
-                canSelectFolders: true,
-                canSelectMany: false,
-                title: "Select project path",
-            });
-            if (resp) {
-                await vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').update('project_dir', resp[0].fsPath, true);
-                vscode.window.showInformationMessage(`Project path set to ${resp[0].fsPath}. You can change this in settings.`);
-                return resp[0].fsPath;
-            }
-        }
-        return;
-    }
-    return existingPath;
-};
-
 
 export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
 
@@ -124,7 +102,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
 
     const workspaceFolder = await getWorkspaceFolder();
 
-    const inputWorkspace = await checkHasInputWorkspace();
+    const inputWorkspace = await vscode.commands.executeCommand<ReturnType<typeof setProjectDir>>('docker.labs-ai-tools-vscode.project-dir', false);
 
     const promptOption = mode === 'remote' ? await showPromptPicker() : { id: `${mode === 'local-dir' ? `local://${inputWorkspace}` : `local://${vscode.window.activeTextEditor?.document.uri.fsPath}`}`, name: `Local Prompt (${mode})` };
 

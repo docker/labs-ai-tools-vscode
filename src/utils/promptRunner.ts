@@ -1,11 +1,12 @@
 import { spawn } from "child_process";
-import { window, workspace } from "vscode";
+import { commands, window, workspace } from "vscode";
+import { setThreadId } from "../commands/setThreadId";
 const output = window.createOutputChannel("Docker Labs: AI Tools");
 
-export const getRunArgs = (promptRef: string, projectDir: string, username: string, platform: string, pat: string, render = false) => {
+export const getRunArgs = async (promptRef: string, projectDir: string, username: string, platform: string, pat: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
     const isMarkdown = promptRef.toLowerCase().endsWith('.md');
-    const threadId = workspace.getConfiguration('docker.labs-ai-tools-vscode').get('thread_id') as string | undefined;
+    const threadId = await commands.executeCommand<ReturnType<typeof setThreadId>>('docker.labs-ai-tools-vscode.thread-id', false)
     let promptArgs: string[] = ["--prompts", promptRef];
     let mountArgs: string[] = ["--mount", `type=bind,source=${projectDir},target=/app/${promptRef}`];
 
@@ -89,7 +90,7 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
 };
 
 export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => Promise<void>) => {
-    const args = getRunArgs(promptArg!, projectDir!, username, platform, pat);
+    const args = await getRunArgs(promptArg!, projectDir!, username, platform, pat);
     callback({ method: 'message', params: { debug: `Running ${args.join(' ')}` } });
     return runAndStream("docker", args, callback);
 };
