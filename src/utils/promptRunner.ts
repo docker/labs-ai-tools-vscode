@@ -45,24 +45,30 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
 const runAndStream = async (command: string, args: string[], callback: (json: any) => Promise<any>) => {
     output.appendLine(`Running ${command} with args ${args.join(' ')}`);
     const child = spawn(command, args);
-    let out = '';
+    let out: any[] = [];
+    let processing = false
+    const processSTDOUT = async (callback: (json: {}) => Promise<void>) => {
+        processing = true
+        while (out.length) {
+            const last = out.pop()
+            let json;
+            try {
+                json = JSON.parse(last);
+            } catch (e) {
+                console.error(`Failed to parse JSON: ${last}, ${e}`);
+                child.kill();
+            }
+            await callback(json);
+        }
+        processing = false;
+    }
 
     const onChildSTDIO = async ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
-        if (stdout) {
-            out += stdout;
-        }
         if (stdout && stdout.startsWith('Content-Length:')) {
-            const rpcMessages = stdout.split('Content-Length: ').filter(Boolean).map(rpcMessage => rpcMessage.trim().slice(rpcMessage.indexOf('{')));
-            for (const rpcMessage of rpcMessages) {
-                let json;
-                try {
-                    json = JSON.parse(rpcMessage);
-                } catch (e) {
-                    console.error(`Failed to parse JSON: ${rpcMessage}, ${e}`);
-                    child.kill();
-                }
-                await callback(json);
-            }
+            out.push(stdout.split('Content-Length: ').filter(Boolean).map(rpcMessage => rpcMessage.trim().slice(rpcMessage.indexOf('{'))))
+        }
+        if (!processing && out.length) {
+            processSTDOUT(callback)
         }
         else if (stderr) {
             callback({ method: 'error', params: { content: stderr } });

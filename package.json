@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -52,12 +52,12 @@
         "when": "editorLangId == markdown"
       },
       {
-        "command": "docker.labs-ai-tools-vscode.set-project-dir",
+        "command": "docker.labs-ai-tools-vscode.project-dir",
         "title": "Set local prompt project directory",
         "when": "editorLangId == markdown"
       },
       {
-        "command": "docker.labs-ai-tools-vscode.set-thread-id",
+        "command": "docker.labs-ai-tools-vscode.thread-id",
         "title": "Set prompt thread ID"
       }
     ]
