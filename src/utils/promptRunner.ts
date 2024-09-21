@@ -42,8 +42,19 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
 
+const anonymizePAT = (args: string[]) => {
+    if (!args.includes('--pat')) {
+        return args
+    }
+    const patIndex = args.indexOf('--pat')
+    const newArgs = [...args]
+    newArgs[patIndex + 1] = args[patIndex + 1].slice(0, 10) + '****'
+    return newArgs
+}
+
 const runAndStream = async (command: string, args: string[], callback: (json: any) => Promise<any>) => {
-    output.appendLine(`Running ${command} with args ${args.join(' ')}`);
+    // const argsWithPrivatePAT = anonymizePAT(args)
+    // output.appendLine(`Running ${command} with args ${argsWithPrivatePAT.join(' ')}`);
     const child = spawn(command, args);
     let out: any[] = [];
     let processing = false
