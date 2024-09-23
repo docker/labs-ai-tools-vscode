@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import { commands, window, workspace } from "vscode";
+import { CancellationToken, commands, window, workspace } from "vscode";
 import { setThreadId } from "../commands/setThreadId";
 const output = window.createOutputChannel("Docker Labs: AI Tools");
 
@@ -42,31 +42,37 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
 
-const anonymizePAT = (args: string[]) => {
-    if (!args.includes('--pat')) {
-        return args
-    }
-    const patIndex = args.indexOf('--pat')
-    const newArgs = [...args]
-    newArgs[patIndex + 1] = args[patIndex + 1].slice(0, 10) + '****'
-    return newArgs
-}
+// const anonymizePAT = (args: string[]) => {
+//     if (!args.includes('--pat')) {
+//         return args
+//     }
+//     const patIndex = args.indexOf('--pat')
+//     const newArgs = [...args]
+//     newArgs[patIndex + 1] = args[patIndex + 1].slice(0, 10) + '****'
+//     return newArgs
+// }
 
-const runAndStream = async (command: string, args: string[], callback: (json: any) => Promise<any>) => {
+const runAndStream = async (command: string, args: string[], callback: (json: any) => Promise<any>, token?: CancellationToken) => {
     // const argsWithPrivatePAT = anonymizePAT(args)
     // output.appendLine(`Running ${command} with args ${argsWithPrivatePAT.join(' ')}`);
     const child = spawn(command, args);
-    let out: any[] = [];
+    if (token) {
+        token.onCancellationRequested(() => {
+            child.kill()
+        })
+    }
+    let out: string[] = [];
     let processing = false
     const processSTDOUT = async (callback: (json: {}) => Promise<void>) => {
         processing = true
         while (out.length) {
-            const last = out.pop()
+            const last = out.shift()!
             let json;
             try {
                 json = JSON.parse(last);
             } catch (e) {
-                console.error(`Failed to parse JSON: ${last}, ${e}`);
+                console.error(`Failed to parse JSON: ${last}, ${e}`)
+                callback({ method: 'error', params: { content: 'Error occured parsing JSON RPC. Please see error console.' } })
                 child.kill();
             }
             await callback(json);
@@ -76,10 +82,17 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
 
     const onChildSTDIO = async ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
         if (stdout && stdout.startsWith('Content-Length:')) {
-            out.push(stdout.split('Content-Length: ').filter(Boolean).map(rpcMessage => rpcMessage.trim().slice(rpcMessage.indexOf('{'))))
-        }
-        if (!processing && out.length) {
-            processSTDOUT(callback)
+            /**
+             * 
+                Content-Length: 61{}
+             * 
+             */
+            const messages = stdout.split('Content-Length: ').filter(Boolean)
+            const messagesJSON = messages.map(m => m.slice(m.indexOf('{')))
+            out.push(...messagesJSON)
+            if (!processing && out.length) {
+                await processSTDOUT(callback)
+            }
         }
         else if (stderr) {
             callback({ method: 'error', params: { content: stderr } });
@@ -106,10 +119,10 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
     });
 };
 
-export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => Promise<void>) => {
+export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => Promise<void>, token: CancellationToken) => {
     const args = await getRunArgs(promptArg!, projectDir!, username, platform, pat);
     callback({ method: 'message', params: { debug: `Running ${args.join(' ')}` } });
-    return runAndStream("docker", args, callback);
+    return runAndStream("docker", args, callback, token);
 };
 
 export const writeKeyToVolume = async (key: string) => {

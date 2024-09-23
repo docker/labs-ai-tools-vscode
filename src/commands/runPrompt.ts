@@ -81,7 +81,9 @@ const getWorkspaceFolder = async () => {
 };
 
 
-export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async progress => {
+export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window, cancellable: true }, async (progress, token) => {
+
+
 
     const result = await checkDockerDesktop();
     if (result === 'RETRY') {
@@ -202,7 +204,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
             else {
                 await writeToEditor(JSON.stringify(json, null, 2));
             }
-        });
+        },token);
     } catch (e: unknown) {
         e = e as Error;
         void vscode.window.showErrorMessage("Error running prompt");
