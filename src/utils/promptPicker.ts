@@ -1,5 +1,6 @@
 import { QuickPickItem, QuickPickItemKind, ThemeIcon, commands, window, workspace } from "vscode";
 import { ctx } from "../extension";
+import { postToBackendSocket } from "./ddSocket";
 
 // https://github.com/owner/repo/tree/ref/path
 // https://github.com/docker/labs-ai-tools-vscode/tree/main/prompts/docker
@@ -163,10 +164,12 @@ export const showPromptPicker = () =>
             if (item.id) {
                 if (item.saved) {
                     await commands.executeCommand("docker.labs-ai-tools-vscode.delete-prompt", item.id);
+                    postToBackendSocket({ event: 'eventLabsPromptDelete', properties: { ref: item.id } });
                     quickPick.items = getDefaultItems();
                 }
                 else {
                     await commands.executeCommand("docker.labs-ai-tools-vscode.save-prompt", item.id);
+                    postToBackendSocket({ event: 'eventLabsPromptSave', properties: { ref: item.id } });
                     quickPick.items = getDefaultItems();
                 }
 

@@ -8,6 +8,8 @@ import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
 import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { getCredential } from "../utils/credential";
 import { setProjectDir } from "./setProjectDir";
+import { postToBackendSocket } from "../utils/ddSocket";
+import { ctx } from "../extension";
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -18,6 +20,7 @@ const START_DOCKER_COMMAND = {
 };
 
 const checkDockerDesktop = () => {
+
     // Coerce the error to have an exit code
     type DockerSpawnError = Error & { code: number };
 
@@ -82,9 +85,7 @@ const getWorkspaceFolder = async () => {
 
 
 export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window, cancellable: true }, async (progress, token) => {
-
-
-
+    postToBackendSocket({ event: 'eventLabsPromptRunPrepare', properties: { mode } });
     const result = await checkDockerDesktop();
     if (result === 'RETRY') {
         return runPrompt(secrets, mode);
@@ -113,6 +114,8 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
     }
     const runningLocal = promptOption.id.startsWith('local://');
 
+    postToBackendSocket({ event: 'eventLabsPromptRunStart', properties: { mode, ref: runningLocal ? 'local' : promptOption.id } });
+
     if (!runningLocal && !workspaceFolder) {
         return vscode.window.showErrorMessage("No workspace selected. Either open a workspace or run a local prompt.", "Open workspace", "Run local prompt").then((value) => {
             if (!value) {
@@ -140,6 +143,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
     const { editor, doc } = await createOutputBuffer();
 
     if (!editor || !doc) {
+        postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: 'No editor or document found' } });
         return;
     }
 
@@ -204,11 +208,12 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
             else {
                 await writeToEditor(JSON.stringify(json, null, 2));
             }
-        },token);
+        }, token);
     } catch (e: unknown) {
-        e = e as Error;
         void vscode.window.showErrorMessage("Error running prompt");
         await writeToEditor('```json\n' + (e as Error).toString() + '\n```');
+        postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: (e as Error).toString() } });
         return;
     }
+    postToBackendSocket({ event: 'eventLabsPromptFinished', properties: { mode } });
 });

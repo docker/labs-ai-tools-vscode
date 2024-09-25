@@ -1,10 +1,6 @@
 import * as vscode from 'vscode';
-import { runPrompt } from './commands/runPrompt';
-
-import { runHotCommand } from './commands/runHotCommand';
 import { setOpenAIKey } from './commands/setOpenAIKey';
 import { nativeClient } from './utils/lsp';
-import { deletePrompt, savePrompt } from './commands/manageSavedPrompts';
 import { spawnSync } from 'child_process';
 import semver from 'semver';
 import commands from './commands';
@@ -26,12 +22,12 @@ export const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJ
 
 const getLatestVersion = async () => {
 	const resp = (await fetch(
-		"https://api.github.com/repos/docker/labs-make-runbook/releases/latest"
+		"https://api.github.com/repos/docker/labs-ai-tools-vscode/releases/latest"
 	)
 		.then((r) => r.json())
 		.catch(() => null)) as { name: string } | null;
 
-	const version = resp?.name?.split("v")[1]?.split(" ")[0];
+	const version = resp?.name
 	return version;
 };
 
