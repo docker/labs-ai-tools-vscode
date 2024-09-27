@@ -2,6 +2,7 @@ import os from 'os';
 import path from 'path';
 import http from 'http';
 import { ctx } from '../extension';
+import { ExtensionContext } from 'vscode';
 const getDevhomePrefix = () => {
     return process.env['DEVHOME'] ? path.basename(process.env['DEVHOME']) : '';
 }
@@ -54,13 +55,21 @@ type TrackEvent = {
     properties?: Record<string, string>
 }
 
-const defaultProperties = {
-    version: ctx.extension.packageJSON.version,
-    platform: os.platform(),
-    arch: os.arch(),
-    nodeVersion: process.version,
-    vscodeVersion: ctx.extension.packageJSON.version,
+let defaultProperties = {
+
 }
+
+export const setDefaultProperties = (ctx: ExtensionContext) => {
+    defaultProperties = {
+        version: ctx.extension.packageJSON.version,
+        platform: os.platform(),
+        arch: os.arch(),
+        nodeVersion: process.version,
+        vscodeVersion: ctx.extension.packageJSON.version,
+    }
+}
+
+
 
 export const postToBackendSocket = (event: TrackEvent) => {
     event.properties = { ...event.properties, ...defaultProperties }

@@ -4,6 +4,7 @@ import { nativeClient } from './utils/lsp';
 import { spawnSync } from 'child_process';
 import semver from 'semver';
 import commands from './commands';
+import { setDefaultProperties } from './utils/ddSocket';
 
 export let ctx: vscode.ExtensionContext;
 
@@ -72,6 +73,7 @@ const checkOutdatedVersionInstalled = async () => {
 export async function activate(context: vscode.ExtensionContext) {
 	checkOutdatedVersionInstalled();
 	checkVersion();
+	setDefaultProperties(context);
 	ctx = context;
 	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-openai-api-key', () => {
 		setOpenAIKey(context.secrets);
