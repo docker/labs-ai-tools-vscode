@@ -25,6 +25,8 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
         '-v', 'openai_key:/secret',
         '--mount', 'type=volume,source=docker-prompts,target=/prompts',
         '-e', 'OPENAI_API_KEY_LOCATION=/secret',
+        '-v', "/run/host-services/backend.sock:/host-services/docker-desktop-backend.sock",
+        '-e', "DOCKER_DESKTOP_SOCKET_PATH=/host-services/docker-desktop-backend.sock",
     ];
 
     const runArgs: string[] = render ? [] : [
