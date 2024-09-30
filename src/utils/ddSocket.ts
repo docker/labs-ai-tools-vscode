@@ -1,42 +1,9 @@
 import os from 'os';
-import path from 'path';
 import http from 'http';
-import { ctx } from '../extension';
 import { ExtensionContext } from 'vscode';
-const getDevhomePrefix = () => {
-    return process.env['DEVHOME'] ? path.basename(process.env['DEVHOME']) : '';
-}
 
 const getDevhome = (): string => {
     return process.env['DEVHOME'] ?? os.homedir();
-}
-const getUserDataDirectory = (
-    /** This distinction is only currently meaningful on Windows */
-    type: 'local' | 'roaming' = 'local',
-): string => {
-    const devhome = getDevhome();
-    if (os.platform() === 'win32') {
-        return path.join(
-            devhome,
-            'AppData',
-            type === 'local' ? 'Local' : 'Roaming',
-            'Docker',
-        );
-    }
-    if (os.platform() === 'linux') {
-        return path.join(devhome, '.docker', 'desktop');
-    }
-    if (os.platform() === 'darwin') {
-        return path.join(
-            devhome,
-            'Library',
-            'Containers',
-            'com.docker.docker',
-            'Data',
-        );
-    }
-
-    throw new Error('Unrecognized platform');
 }
 
 export function getBackendSocketByPlatform(): string {
