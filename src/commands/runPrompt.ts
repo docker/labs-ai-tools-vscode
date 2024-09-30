@@ -6,7 +6,6 @@ import { showPromptPicker } from "../utils/promptPicker";
 import { createOutputBuffer } from "../utils/promptFilename";
 import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
 import { verifyHasOpenAIKey } from "./setOpenAIKey";
-import { getCredential } from "../utils/credential";
 import { setProjectDir } from "./setProjectDir";
 import { postToBackendSocket } from "../utils/ddSocket";
 import { ctx } from "../extension";
@@ -162,15 +161,13 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
 
     progress.report({ increment: 5, message: "Detecting docker desktop token" });
 
-    const { Username, Password } = await getCredential("docker");
-
     try {
         progress.report({ increment: 5, message: "Mounting secrets..." });
         await writeKeyToVolume(apiKey!);
         progress.report({ increment: 5, message: "Running..." });
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
-        await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, Username, process.platform, Password, async (json) => {
+        await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, 'vscode-user', process.platform, async (json) => {
             if (json.method === 'functions') {
                 const functions = json.params;
                 for (const func of functions) {
