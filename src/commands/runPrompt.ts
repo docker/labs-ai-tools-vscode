@@ -168,42 +168,54 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
         await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, 'vscode-user', process.platform, async (json) => {
-            if (json.method === 'functions') {
-                const functions = json.params;
-                for (const func of functions) {
-                    const { id, function: { arguments: args } } = func;
-                    const params_str = args;
-                    let functionRange = ranges[id] || getBaseFunctionRange();
-                    if (functionRange.isSingleLine) {
-                        // Add function to the end of the file and update the range
-                        await writeToEditor(params_str);
-                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
+            switch (json.method) {
+                case 'functions':
+                    const functions = json.params;
+                    for (const func of functions) {
+                        const { id, function: { arguments: args } } = func;
+                        const params_str = args;
+                        let functionRange = ranges[id] || getBaseFunctionRange();
+                        if (functionRange.isSingleLine) {
+                            // Add function to the end of the file and update the range
+                            await writeToEditor(params_str);
+                            functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
+                        }
+                        else {
+                            // Replace existing function and update the range
+                            await writeToEditor(params_str, functionRange);
+                            functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
+                        }
+                        ranges[id] = functionRange;
                     }
-                    else {
-                        // Replace existing function and update the range
-                        await writeToEditor(params_str, functionRange);
-                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
+                    break;
+                case 'start':
+                    const { level, role, content } = json.params;
+                    const header = Array(level).fill('#').join('');
+                    await writeToEditor(`${header} ROLE ${role} (${content})\n`);
+                    break;
+                case 'functions-done':
+                    await writeToEditor(json.params.content);
+                    break;
+                case 'message':
+                    await writeToEditor(json.params.content);
+                    if (json.params.debug) {
+                        const backticks = '\n```\n';
+                        await writeToEditor(`${backticks}# Debug\n${json.params.debug}\n${backticks}\n`);
                     }
-                    ranges[id] = functionRange;
-                }
-            }
-            else if (json.method === 'message') {
-                await writeToEditor(json.params.content);
-                if (json.params.debug) {
-                    const backticks = '\n```\n';
-                    await writeToEditor(`${backticks}# Debug\n${json.params.debug}\n${backticks}\n`);
-                }
-
-            }
-            else if (json.method === 'prompts') {
-                const promptHeader = '# Rendered Prompt\n\n';
-                if (!doc.getText().includes(promptHeader)) {
-                    await writeToEditor(promptHeader);
-                }
-                await writeToEditor(json.params.messages.map((m: any) => JSON.stringify(m, null, 2)).join('\n') + '\n');
-            }
-            else {
-                await writeToEditor(JSON.stringify(json, null, 2));
+                    break;
+                case 'prompts':
+                    const promptHeader = '# Rendered Prompt\n\n';
+                    if (!doc.getText().includes(promptHeader)) {
+                        await writeToEditor(promptHeader);
+                    }
+                    await writeToEditor(json.params.messages.map((m: any) => JSON.stringify(m, null, 2)).join('\n') + '\n');
+                    break;
+                case 'error':
+                    await writeToEditor('```error\n' + (json.params.content as Error).toString() + '\n```');
+                    postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: json.params.content } });
+                    return;
+                default:
+                    await writeToEditor(JSON.stringify(json, null, 2));
             }
         }, token);
     } catch (e: unknown) {
