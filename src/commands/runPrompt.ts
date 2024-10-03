@@ -172,12 +172,12 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                 case 'functions':
                     const functions = json.params;
                     for (const func of functions) {
-                        const { id, function: { arguments: args } } = func;
+                        const { id, function: { arguments: args, finish_reason } } = func;
                         const params_str = args;
                         let functionRange = ranges[id] || getBaseFunctionRange();
                         if (functionRange.isSingleLine) {
                             // Add function to the end of the file and update the range
-                            await writeToEditor(params_str);
+                            await writeToEditor(`\`\`\`json\n${params_str}`);
                             functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
                         }
                         else {
@@ -186,6 +186,10 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                             functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
                         }
                         ranges[id] = functionRange;
+                        // If finish_reason is present, end ```json
+                        if (finish_reason) {
+                            await writeToEditor('\n```\n');
+                        }
                     }
                     break;
                 case 'start':
@@ -211,7 +215,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(json.params.messages.map((m: any) => JSON.stringify(m, null, 2)).join('\n') + '\n');
                     break;
                 case 'error':
-                    await writeToEditor('```error\n' + (json.params.content as Error).toString() + '\n```');
+                    await writeToEditor('```error\n' + (json.params.content as Error).toString() + '\n```\n');
                     postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: json.params.content } });
                     return;
                 default:
