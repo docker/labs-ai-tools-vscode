@@ -73,7 +73,7 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
                 json = JSON.parse(last);
             } catch (e) {
                 console.error(`Failed to parse JSON: ${last}, ${e}`)
-                callback({ method: 'error', params: { content: 'Error occured parsing JSON RPC. Please see error console.' } })
+                callback({ method: 'error', params: { message: 'Error occured parsing JSON RPC. Please see error console.' } })
                 child.kill();
             }
             await callback(json);
@@ -96,7 +96,7 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
             }
         }
         else if (stderr) {
-            callback({ method: 'error', params: { content: stderr } });
+            callback({ method: 'error', params: { message: stderr } });
         }
         else {
             callback({ method: 'message', params: { content: stdout } });
@@ -114,7 +114,7 @@ const runAndStream = async (command: string, args: string[], callback: (json: an
             resolve(code);
         });
         child.on('error', (err) => {
-            callback({ method: 'error', params: { content: JSON.stringify(err) } });
+            callback({ method: 'error', params: { message: JSON.stringify(err) } });
             reject(err);
         });
     });

@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -20,6 +20,17 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Labs AI Tools",
+      "properties": {
+        "docker.labs-ai-tools-vscode.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug mode for Labs AI Tools"
+        }
+      }
+    },
     "commands": [
       {
         "command": "docker.labs-ai-tools-vscode.run-prompt",
@@ -58,6 +69,10 @@
       {
         "command": "docker.labs-ai-tools-vscode.thread-id",
         "title": "Set prompt thread ID"
+      },
+      {
+        "command": "docker.labs-ai-tools-vscode.toggle-debug",
+        "title": "Toggle debug mode for Labs AI Tools"
       }
     ]
   },

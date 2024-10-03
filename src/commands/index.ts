@@ -17,6 +17,14 @@ const commands = (context: CTX) => [
     { id: 'docker.labs-ai-tools-vscode.run-prompt', callback: () => runPrompt(context.secrets, 'remote') },
     { id: 'docker.labs-ai-tools-vscode.project-dir', callback: setProjectDir },
     { id: 'docker.labs-ai-tools-vscode.thread-id', callback: setThreadId },
+    {
+        id: 'docker.labs-ai-tools-vscode.toggle-debug', callback: () => {
+            const config = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode');
+            const currentValue = config.get('debug') as boolean;
+            config.update('debug', !currentValue);
+            vscode.window.showInformationMessage(`Debug mode is now ${currentValue ? 'disabled' : 'enabled'}.`);
+        }
+    },
 ]
 
 export default (context: CTX) => commands(context).map((comm) => vscode.commands.registerCommand(comm.id, comm.callback))

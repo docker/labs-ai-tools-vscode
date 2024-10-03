@@ -8,7 +8,6 @@ import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
 import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { setProjectDir } from "./setProjectDir";
 import { postToBackendSocket } from "../utils/ddSocket";
-import { ctx } from "../extension";
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -194,25 +193,28 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     break;
                 case 'start':
                     const { level, role, content } = json.params;
-                    const header = Array(level).fill('#').join('');
-                    await writeToEditor(`${header} ROLE ${role} (${content})\n`);
+                    const header = Array(level + 1).fill('#').join('');
+                    await writeToEditor(`${header} ROLE ${role}${content ? ` (${content})` : ''}\n\n`);
                     break;
                 case 'functions-done':
                     await writeToEditor(json.params.content);
                     break;
                 case 'message':
                     await writeToEditor(json.params.content);
-                    if (json.params.debug) {
+                    if (json.params.debug && vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get<boolean>('debug')) {
                         const backticks = '\n```\n';
                         await writeToEditor(`${backticks}# Debug\n${json.params.debug}\n${backticks}\n`);
                     }
                     break;
                 case 'prompts':
+                    if (!vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode').get<boolean>('debug')) {
+                        break;
+                    }
                     const promptHeader = '# Rendered Prompt\n\n';
                     if (!doc.getText().includes(promptHeader)) {
                         await writeToEditor(promptHeader);
                     }
-                    await writeToEditor(json.params.messages.map((m: any) => JSON.stringify(m, null, 2)).join('\n') + '\n');
+                    await writeToEditor(json.params.messages.map((m: any) => `# ${m.role}\n${m.content}`).join('\n') + '\n');
                     break;
                 case 'error':
                     await writeToEditor('```error\n' + (json.params.content as Error).toString() + '\n```\n');
