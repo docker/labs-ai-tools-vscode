@@ -4,7 +4,7 @@ import { nativeClient } from './utils/lsp';
 import { spawnSync } from 'child_process';
 import semver from 'semver';
 import commands from './commands';
-import { setDefaultProperties } from './utils/ddSocket';
+import { postToBackendSocket, setDefaultProperties } from './utils/ddSocket';
 
 export let ctx: vscode.ExtensionContext;
 
@@ -43,14 +43,15 @@ const checkVersion = () => {
 		if (updateAvail && !currentVersion.includes('development')) {
 			void vscode.window.showWarningMessage(
 				`Docker AI Tools may be ready for an update. You have ${currentVersion} but latest is ${latestVersion}`,
-				"Update"
+				"Update",
+				"Continue"
 			).then(
 				(a) =>
 					a &&
 					a === "Update" &&
 					vscode.env.openExternal(
 						vscode.Uri.parse(
-							"https://github.com/docker/labs-make-runbook/releases"
+							"https://github.com/docker/labs-ai-tools-vscode/releases"
 						)
 					)
 			);
@@ -74,6 +75,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	checkOutdatedVersionInstalled();
 	checkVersion();
 	setDefaultProperties(context);
+	postToBackendSocket({ event: 'eventLabsPromptActivated' });
 	ctx = context;
 	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-openai-api-key', () => {
 		setOpenAIKey(context.secrets);

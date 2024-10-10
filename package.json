@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -83,7 +83,8 @@
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
-    "package": "vsce package"
+    "package": "vsce package",
+    "vscode:uninstall": "node ./out/uninstall.js"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
