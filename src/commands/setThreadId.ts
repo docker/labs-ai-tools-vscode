@@ -12,10 +12,11 @@ export const setThreadId = async (overwrite = true) => {
         prompt: 'Enter a simple string to tag the thread volume.'
     })
     if (!resp) {
-        window.showErrorMessage('No thread ID set.')
-        return undefined;
+        window.showInformationMessage('Thread ID cleared. Thread will not be saved.')
+    }
+    else {
+        window.showInformationMessage(`Thread ID set to ${resp}. Thread will be saved as a Docker volume.`)
     }
     await ctx.workspaceState.update('thread_id', resp)
-    window.showInformationMessage(`Thread ID set to ${resp}`)
     return resp;
 }

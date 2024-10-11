@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.1.6",
+  "version": "0.1.6-hotfix1",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -34,45 +34,40 @@
     "commands": [
       {
         "command": "docker.labs-ai-tools-vscode.run-prompt",
-        "title": "Run saved prompt"
+        "title": "Docker AI: Run saved prompt"
       },
       {
         "command": "docker.labs-ai-tools-vscode.run-commands",
-        "title": "Run markdown commands"
+        "title": "Docker AI: Run markdown commands"
       },
       {
         "command": "docker.labs-ai-tools-vscode.set-openai-api-key",
-        "title": "Set OpenAI API key for Docker AI prompts"
+        "title": "Docker AI: Set OpenAI API key"
       },
       {
         "command": "docker.labs-ai-tools-vscode.save-prompt",
-        "title": "Save a prompt"
+        "title": "Docker AI: Save a prompt"
       },
       {
         "command": "docker.labs-ai-tools-vscode.delete-prompt",
-        "title": "Delete a saved prompt"
-      },
-      {
-        "command": "docker.labs-ai-tools-vscode.run-dir-as-prompt",
-        "title": "Run current file parent directory as a prompt",
-        "when": "editorLangId == markdown"
+        "title": "Docker AI: Delete a saved prompt"
       },
       {
         "command": "docker.labs-ai-tools-vscode.run-file-as-prompt",
-        "title": "Run current file as a prompt",
+        "title": "Docker AI: Run this prompt",
         "when": "editorLangId == markdown"
       },
       {
         "command": "docker.labs-ai-tools-vscode.project-dir",
-        "title": "Set local prompt project directory"
+        "title": "Docker AI: Select target project"
       },
       {
         "command": "docker.labs-ai-tools-vscode.thread-id",
-        "title": "Set prompt thread ID"
+        "title": "Docker AI: Set prompt thread ID"
       },
       {
         "command": "docker.labs-ai-tools-vscode.toggle-debug",
-        "title": "Toggle debug mode for Labs AI Tools"
+        "title": "Docker AI: Toggle debug mode"
       }
     ]
   },

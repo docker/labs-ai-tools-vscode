@@ -8,10 +8,7 @@ export const savePrompt = async (prompt: string) => {
     if (!prompt) {
         prompt = (await showPromptPicker())?.id || "";
     }
-    if (prompt === "") {
-        return vscode.window.showErrorMessage("No prompt selected");
-    }
-    else {
+    if (prompt) {
         ctx.globalState.update('savedPrompts', [...ctx.globalState.get('savedPrompts', []), prompt]);
         vscode.window.showInformationMessage(`Saved ${prompt}`);
         vscode.commands.executeCommand("docker.labs-ai-tools-vscode.run-prompt");

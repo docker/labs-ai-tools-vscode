@@ -73,7 +73,6 @@ const getWorkspaceFolder = async () => {
             ignoreFocusOut: true,
         });
         if (!option) {
-            await vscode.window.showErrorMessage("No workspace selected");
             return;
         }
         workspaceFolder = workspaceFolders[option.index];
@@ -109,7 +108,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
     const promptOption = mode === 'remote' ? await showPromptPicker() : { id: `${mode === 'local-dir' ? `local://${inputWorkspace}` : `local://${vscode.window.activeTextEditor?.document.uri.fsPath}`}`, name: `Local Prompt (${mode})` };
 
     if (!promptOption) {
-        return vscode.window.showErrorMessage("No prompt selected");
+        return;
     }
     const runningLocal = promptOption.id.startsWith('local://');
 
@@ -175,6 +174,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     const functions = json.params;
                     for (const func of functions) {
                         const { id, function: { arguments: args, finish_reason } } = func;
+
                         const params_str = args;
                         let functionRange = ranges[id] || getBaseFunctionRange();
                         if (functionRange.isSingleLine) {
@@ -220,9 +220,9 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(json.params.messages.map((m: any) => `# ${m.role}\n${m.content}`).join('\n') + '\n');
                     break;
                 case 'error':
-                    await writeToEditor('```error\n' + (json.params.content as Error).toString() + '\n```\n');
+                    await writeToEditor('```error\n' + json.params.message + '\n```\n');
                     postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: json.params.content } });
-                    return;
+                    break;
                 default:
                     await writeToEditor(JSON.stringify(json, null, 2));
             }
