@@ -13,7 +13,7 @@ const setKey = async (secrets: SecretStorage) => {
         return;
     }
     await secrets.store('openAIKey', key);
-    void window.showInformationMessage("Secret set.");
+    void window.showInformationMessage("OpenAI key set.");
 };
 
 export const setOpenAIKey = async (secrets: SecretStorage, skipQuickPick: boolean = false) => {
@@ -41,7 +41,7 @@ export const setOpenAIKey = async (secrets: SecretStorage, skipQuickPick: boolea
 export const verifyHasOpenAIKey = async (secrets: SecretStorage, didRunAutomatically = false) => {
     const openAIKey = await secrets.get('openAIKey');
     if (!openAIKey) {
-        return await window.showErrorMessage('Model provider set to OpenAI, but no OpenAI API key found in secrets.', {
+        return await window.showErrorMessage('No OpenAI API key found. Please set one or use a dummy key for Ollama.', {
             modal: didRunAutomatically
         }, 'Set Key',).then(
             async (res) => {

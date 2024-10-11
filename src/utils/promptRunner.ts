@@ -3,7 +3,7 @@ import { CancellationToken, commands, window, workspace } from "vscode";
 import { setThreadId } from "../commands/setThreadId";
 const output = window.createOutputChannel("Docker Labs: AI Tools");
 
-export const getRunArgs = async (promptRef: string, projectDir: string, username: string, platform: string, pat: string, render = false) => {
+export const getRunArgs = async (promptRef: string, projectDir: string, username: string, pat: string, platform: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
     const isMarkdown = promptRef.toLowerCase().endsWith('.md');
     const threadId = await commands.executeCommand<ReturnType<typeof setThreadId>>('docker.labs-ai-tools-vscode.thread-id', false)
