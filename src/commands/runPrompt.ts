@@ -173,7 +173,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                 case 'functions':
                     const functions = json.params;
                     for (const func of functions) {
-                        const { id, function: { arguments: args, finish_reason } } = func;
+                        const { id, function: { arguments: args } } = func;
 
                         const params_str = args;
                         let functionRange = ranges[id] || getBaseFunctionRange();
@@ -188,11 +188,10 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                             functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
                         }
                         ranges[id] = functionRange;
-                        // If finish_reason is present, end ```json
-                        if (finish_reason) {
-                            await writeToEditor('\n```\n');
-                        }
                     }
+                    break;
+                case 'functions-done':
+                    await writeToEditor('\n```\n\n');
                     break;
                 case 'start':
                     const { level, role, content } = json.params;
