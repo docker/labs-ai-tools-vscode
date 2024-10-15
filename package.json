@@ -20,6 +20,22 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "grammars": [
+      {
+        "path": "./out/promptgrammar.json",
+        "scopeName": "prompt.injection",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      },
+      {
+        "path": "./out/promptmetadatagrammar.json",
+        "scopeName": "prompt.metadata.injection",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Labs AI Tools",

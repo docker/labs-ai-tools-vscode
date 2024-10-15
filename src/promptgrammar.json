@@ -1,0 +1,41 @@
+{
+    "scopeName": "prompt.injection",
+    "injectionSelector": "L:text.html.markdown",
+    "patterns": [
+        {
+            "include": "#prompt-section-keyword"
+        },
+        {
+            "include": "#prompt-handlebars-keyword"
+        }
+    ],
+    "repository": {
+        "prompt-section-keyword": {
+            "match": "(?i)\\#\\s*(prompt)\\s*(.*)(?-i)",
+            "name": "prompt.section.keyword",
+            "captures": {
+                "1": {
+                    "name": "keyword.prompt.section"
+                },
+                "2": {
+                    "name": "string.prompt.type"
+                }
+            }
+        },
+        "prompt-handlebars-keyword": {
+            "match": "(?i)(\\{\\{)(.*)(\\}\\})(?-i)",
+            "name": "keyword.handlebars.prompt",
+            "captures": {
+                "1": {
+                    "name": "punctuation.definition.dictionary.begin.json"
+                },
+                "2": {
+                    "name": "macro.prompt.section"
+                },
+                "3": {
+                    "name": "punctuation.definition.dictionary.end.json"
+                }
+            }
+        }
+    }
+}

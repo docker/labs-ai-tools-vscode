@@ -1,0 +1,15 @@
+{
+    "scopeName": "prompt.metadata.injection",
+    "injectionSelector": "L:meta.embedded.block.frontmatter",
+    "patterns": [
+        {
+            "include": "#prompt-metadata-keyword"
+        }
+    ],
+    "repository": {
+        "prompt-metadata-keyword": {
+            "match": "(?i)(functions)|(extractors)|(model)|(stream)|(url)(?-i)",
+            "name": "keyword.function.prompt.metadata"
+        }
+    }
+}
