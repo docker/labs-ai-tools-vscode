@@ -21,7 +21,7 @@ const commands = (context: CTX) => [
         id: 'docker.labs-ai-tools-vscode.toggle-debug', callback: () => {
             const config = vscode.workspace.getConfiguration('docker.labs-ai-tools-vscode');
             const currentValue = config.get('debug') as boolean;
-            config.update('debug', !currentValue);
+            config.update('debug', !currentValue, true);
             vscode.window.showInformationMessage(`Debug mode is now ${currentValue ? 'disabled' : 'enabled'}.`);
         }
     },
