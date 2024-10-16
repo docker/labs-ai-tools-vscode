@@ -17,10 +17,10 @@ jobs:
           node-version: "20"
 
       - name: "Install dependencies"
-        run: npm install
+        run: yarn install
 
       - name: "Build extension"
-        run: npm run package
+        run: yarn run package
 
       - name: upload vsix
         uses: actions/upload-release-asset@v1

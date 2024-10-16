@@ -21,6 +21,6 @@ jobs:
           node-version: "20"
 
       - name: "Install dependencies"
-        run: npm install
+        run: yarn install
       - name: "Run tests"
-        run: xvfb-run -a npm test
+        run: xvfb-run -a yarn test
