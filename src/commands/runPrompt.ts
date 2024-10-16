@@ -219,7 +219,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(json.params.messages.map((m: any) => `# ${m.role}\n${m.content}`).join('\n') + '\n');
                     break;
                 case 'error':
-                    await writeToEditor('```error\n' + json.params.message + '\n```\n');
+                    await writeToEditor('```error\n' + json.params.content + '\n```\n');
                     postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: json.params.content } });
                     break;
                 default:
