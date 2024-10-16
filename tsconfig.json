@@ -17,6 +17,7 @@
 	},
 	"include": [
 		"src/promptgrammar.json",
-		"src/promptmetadatagrammar.json"
+		"src/promptmetadatagrammar.json",
+		"src/**/*.ts"
 	]
 }
