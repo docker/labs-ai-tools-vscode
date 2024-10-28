@@ -3,8 +3,7 @@ import { CancellationToken, commands, window, workspace } from "vscode";
 import { setThreadId } from "../commands/setThreadId";
 import * as rpc from 'vscode-jsonrpc/node';
 import { notifications } from "./notifications";
-
-const output = window.createOutputChannel("Docker Labs: AI Tools");
+import { extensionOutput } from "../extension";
 
 export const getRunArgs = async (promptRef: string, projectDir: string, username: string, pat: string, platform: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
@@ -77,10 +76,10 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
         }
     }
 
-    connection.onNotification(notifications.message, (params) => pushNotification('message', params));
-    connection.onNotification(notifications.error, (params) => pushNotification('error', params));
-    connection.onNotification(notifications.functions, (params) => pushNotification('functions', params));
-    connection.onNotification(notifications.functionsDone, (params) => pushNotification('functions-done', params));
+    for (const [type, properties] of Object.entries(notifications)){
+        // @ts-expect-error
+        connection.onNotification(properties, (params)=> pushNotification(type, params))
+    }
 
     connection.listen();
 
@@ -95,29 +94,30 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
 export const writeKeyToVolume = async (key: string) => {
 
     const args1 = ["pull", "vonwig/function_write_files"];
+
     const args2 = [
         "run",
-        "-v",
+        "-v", "openai_key:/secret",
         "--rm",
-        "openai_key:/secret",
         "--workdir", "/secret",
         "vonwig/function_write_files",
         `'` + JSON.stringify({ files: [{ path: ".openai-api-key", content: key, executable: false }] }) + `'`
     ];
 
     const child1 = spawn("docker", args1);
+
     child1.stdout.on('data', (data) => {
-        output.appendLine(data.toString());
+        extensionOutput.appendLine(data.toString());
     });
     child1.stderr.on('data', (data) => {
-        output.appendLine(data.toString());
+        extensionOutput.appendLine(data.toString());
     });
 
     const child2 = spawn("docker", args2);
     child2.stdout.on('data', (data) => {
-        output.appendLine(data.toString());
+        extensionOutput.appendLine(data.toString());
     });
     child2.stderr.on('data', (data) => {
-        output.appendLine(data.toString());
+        extensionOutput.appendLine(data.toString());
     });
 };

@@ -9,6 +9,7 @@ import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { getCredential } from "../utils/credential";
 import { setProjectDir } from "./setProjectDir";
 import { postToBackendSocket } from "../utils/ddSocket";
+import { extensionOutput } from "../extension";
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -169,6 +170,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
         await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, Username || 'vscode-user', Password, process.platform, async (json) => {
+            extensionOutput.appendLine(JSON.stringify(json))
             switch (json.method) {
                 case 'functions':
                     const { id, function: { arguments: args } } = json.params;
@@ -195,7 +197,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(`${header} ROLE ${role}${content ? ` (${content})` : ''}\n\n`);
                     break;
                 case 'functions-done':
-                    await writeToEditor(json.params.content);
+                    await writeToEditor(json.params.content+'\n\n');
                     break;
                 case 'message':
                     await writeToEditor(json.params.content);

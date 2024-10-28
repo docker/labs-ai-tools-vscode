@@ -20,6 +20,8 @@ export const extensionId = 'docker.labs-ai-tools-vscode';
 
 export const packageJSON = vscode.extensions.getExtension(extensionId)?.packageJSON;
 
+export const extensionOutput = vscode.window.createOutputChannel('Docker Labs AI', 'json')
+
 
 const getLatestVersion = async () => {
 	const resp = (await fetch(
