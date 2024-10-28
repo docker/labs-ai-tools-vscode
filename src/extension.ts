@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { setOpenAIKey } from './commands/setOpenAIKey';
 import { nativeClient } from './utils/lsp';
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import semver from 'semver';
 import commands from './commands';
 import { postToBackendSocket, setDefaultProperties } from './utils/ddSocket';
@@ -82,7 +82,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(setOpenAIKeyCommand);
 
-	spawnSync('docker', ['pull', "vonwig/prompts:latest"]);
+	const pullPromptImage = () => {
+		const process = spawn('docker', ['pull', "vonwig/prompts:latest"]);
+		process.stdout.on('data', (data) => {
+			console.error(data.toString());
+		});
+		process.stderr.on('data', (data) => {
+			console.error(data.toString());
+		});
+	}
+
+	pullPromptImage();
 
 	const registeredCommands = commands(context)
 

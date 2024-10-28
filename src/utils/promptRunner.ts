@@ -1,6 +1,9 @@
 import { spawn } from "child_process";
 import { CancellationToken, commands, window, workspace } from "vscode";
 import { setThreadId } from "../commands/setThreadId";
+import * as rpc from 'vscode-jsonrpc/node';
+import { notifications } from "./notifications";
+
 const output = window.createOutputChannel("Docker Labs: AI Tools");
 
 export const getRunArgs = async (promptRef: string, projectDir: string, username: string, pat: string, platform: string, render = false) => {
@@ -44,87 +47,49 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
     return [...baseArgs, ...mountArgs, ...runArgs];
 };
 
-// const anonymizePAT = (args: string[]) => {
-//     if (!args.includes('--pat')) {
-//         return args
-//     }
-//     const patIndex = args.indexOf('--pat')
-//     const newArgs = [...args]
-//     newArgs[patIndex + 1] = args[patIndex + 1].slice(0, 10) + '****'
-//     return newArgs
-// }
-
-const runAndStream = async (command: string, args: string[], callback: (json: any) => Promise<any>, token?: CancellationToken) => {
-    // const argsWithPrivatePAT = anonymizePAT(args)
-    // output.appendLine(`Running ${command} with args ${argsWithPrivatePAT.join(' ')}`);
-    const child = spawn(command, args);
-    if (token) {
-        token.onCancellationRequested(() => {
-            child.kill()
-        })
-    }
-    let out: string[] = [];
-    let processing = false
-    const processSTDOUT = async (callback: (json: {}) => Promise<void>) => {
-        processing = true
-        while (out.length) {
-            const last = out.shift()!
-            let json;
-            try {
-                json = JSON.parse(last);
-            } catch (e) {
-                console.error(`Failed to parse JSON: ${last}, ${e}`)
-                callback({ method: 'error', params: { message: 'Error occured parsing JSON RPC. Please see error console.' } })
-                child.kill();
-            }
-            await callback(json);
-        }
-        processing = false;
-    }
-
-    const onChildSTDIO = async ({ stdout, stderr }: { stdout: string; stderr: string | null }) => {
-        if (stdout && stdout.startsWith('Content-Length:')) {
-            /**
-             * 
-                Content-Length: 61{}
-             * 
-             */
-            const messages = stdout.split('Content-Length: ').filter(Boolean)
-            const messagesJSON = messages.map(m => m.slice(m.indexOf('{')))
-            out.push(...messagesJSON)
-            if (!processing && out.length) {
-                await processSTDOUT(callback)
-            }
-        }
-        else if (stderr) {
-            callback({ method: 'error', params: { message: stderr } });
-        }
-        else {
-            callback({ method: 'message', params: { content: stdout } });
-        }
-    };
-    return new Promise((resolve, reject) => {
-        child.stdout.on('data', (data) => {
-            onChildSTDIO({ stdout: data.toString(), stderr: '' });
-        });
-        child.stderr.on('data', (data) => {
-            onChildSTDIO({ stderr: data.toString(), stdout: '' });
-        });
-        child.on('close', (code) => {
-            callback({ method: 'message', params: { debug: `child process exited with code ${code}` } });
-            resolve(code);
-        });
-        child.on('error', (err) => {
-            callback({ method: 'error', params: { message: JSON.stringify(err) } });
-            reject(err);
-        });
-    });
-};
-
 export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => Promise<void>, token: CancellationToken) => {
     const args = await getRunArgs(promptArg!, projectDir!, username, platform, pat);
     callback({ method: 'message', params: { debug: `Running ${args.join(' ')}` } });
-    return runAndStream("docker", args, callback, token);
+    const childProcess = spawn("docker", args);
+
+    let connection = rpc.createMessageConnection(
+        new rpc.StreamMessageReader(childProcess.stdout),
+        new rpc.StreamMessageWriter(childProcess.stdin)
+    );
+
+    const notificationBuffer: { method: string, params: object }[] = []
+
+    let processingBuffer = false;
+
+    const processBuffer = async () => {
+        processingBuffer = true;
+        while (notificationBuffer.length > 0) {
+            await callback(notificationBuffer.shift());
+        }
+        processingBuffer = false;
+    }
+
+
+    const pushNotification = (method: string, params: object) => {
+        notificationBuffer.push({ method, params });
+        if (!processingBuffer) {
+            processBuffer();
+        }
+    }
+
+    connection.onNotification(notifications.message, (params) => pushNotification('message', params));
+    connection.onNotification(notifications.error, (params) => pushNotification('error', params));
+    connection.onNotification(notifications.functions, (params) => pushNotification('functions', params));
+    connection.onNotification(notifications.functionsDone, (params) => pushNotification('functions-done', params));
+
+    connection.listen();
+
+    token.onCancellationRequested(() => {
+        childProcess.kill();
+        connection.dispose();
+    });
+
+
 };
 
 export const writeKeyToVolume = async (key: string) => {
@@ -133,14 +98,26 @@ export const writeKeyToVolume = async (key: string) => {
     const args2 = [
         "run",
         "-v",
+        "--rm",
         "openai_key:/secret",
         "--workdir", "/secret",
         "vonwig/function_write_files",
         `'` + JSON.stringify({ files: [{ path: ".openai-api-key", content: key, executable: false }] }) + `'`
     ];
-    const callback = async (json: any) => {
-        output.appendLine(JSON.stringify(json, null, 2));
-    };
-    await runAndStream("docker", args1, callback);
-    await runAndStream("docker", args2, callback);
+
+    const child1 = spawn("docker", args1);
+    child1.stdout.on('data', (data) => {
+        output.appendLine(data.toString());
+    });
+    child1.stderr.on('data', (data) => {
+        output.appendLine(data.toString());
+    });
+
+    const child2 = spawn("docker", args2);
+    child2.stdout.on('data', (data) => {
+        output.appendLine(data.toString());
+    });
+    child2.stderr.on('data', (data) => {
+        output.appendLine(data.toString());
+    });
 };

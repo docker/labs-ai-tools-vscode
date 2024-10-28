@@ -171,24 +171,20 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, Username || 'vscode-user', Password, process.platform, async (json) => {
             switch (json.method) {
                 case 'functions':
-                    const functions = json.params;
-                    for (const func of functions) {
-                        const { id, function: { arguments: args } } = func;
-
-                        const params_str = args;
-                        let functionRange = ranges[id] || getBaseFunctionRange();
-                        if (functionRange.isSingleLine) {
-                            // Add function to the end of the file and update the range
-                            await writeToEditor(`\`\`\`json\n${params_str}`);
-                            functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
-                        }
-                        else {
-                            // Replace existing function and update the range
-                            await writeToEditor(params_str, functionRange);
-                            functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
-                        }
-                        ranges[id] = functionRange;
+                    const { id, function: { arguments: args } } = json.params;
+                    const params_str = args;
+                    let functionRange = ranges[id] || getBaseFunctionRange();
+                    if (functionRange.isSingleLine) {
+                        // Add function to the end of the file and update the range
+                        await writeToEditor(`\`\`\`json\n${params_str}`);
+                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
                     }
+                    else {
+                        // Replace existing function and update the range
+                        await writeToEditor(params_str, functionRange);
+                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
+                    }
+                    ranges[id] = functionRange;
                     break;
                 case 'functions-done':
                     await writeToEditor('\n```\n\n');
@@ -219,8 +215,9 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(json.params.messages.map((m: any) => `# ${m.role}\n${m.content}`).join('\n') + '\n');
                     break;
                 case 'error':
-                    await writeToEditor('```error\n' + json.params.content + '\n```\n');
-                    postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: json.params.content } });
+                    const errorMSG = String(json.params.content) + String(json.params.message)
+                    await writeToEditor('```error\n' + errorMSG + '\n```\n');
+                    postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: errorMSG } });
                     break;
                 default:
                     await writeToEditor(JSON.stringify(json, null, 2));
