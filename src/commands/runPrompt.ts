@@ -10,6 +10,7 @@ import { getCredential } from "../utils/credential";
 import { setProjectDir } from "./setProjectDir";
 import { postToBackendSocket } from "../utils/ddSocket";
 import { extensionOutput } from "../extension";
+import { randomUUID } from "crypto";
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -133,13 +134,15 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         return vscode.window.showErrorMessage("No project path set. Please set the project path in settings or run a local prompt from a workspace.");
     }
 
+    const hostDir = runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath;
+
     progress.report({ increment: 5, message: "Checking for project path..." });
 
     progress.report({ increment: 5, message: "Writing prompt output file..." });
 
     const apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = await createOutputBuffer();
+    const { editor, doc } = await createOutputBuffer('prompt-output' + randomUUID() + '.md', hostDir);
 
     if (!editor || !doc) {
         postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: 'No editor or document found' } });
@@ -169,7 +172,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         progress.report({ increment: 5, message: "Running..." });
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
-        await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, Username || 'vscode-user', Password, process.platform, async (json) => {
+        await spawnPromptImage(promptOption.id, hostDir, Username || 'vscode-user', Password, process.platform, async (json) => {
             extensionOutput.appendLine(JSON.stringify(json))
             switch (json.method) {
                 case 'functions':
@@ -225,6 +228,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(JSON.stringify(json, null, 2));
             }
         }, token);
+        await doc.save();
     } catch (e: unknown) {
         void vscode.window.showErrorMessage("Error running prompt");
         await writeToEditor('```json\n' + (e as Error).toString() + '\n```');
