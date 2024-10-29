@@ -115,6 +115,10 @@ export const writeKeyToVolume = async (key: string) => {
         getJSONArgForPlatform({ files: [{ path: ".openai-api-key", content: key, executable: false }] })
     ];
 
+    extensionOutput.appendLine(JSON.stringify({"write-open-ai-key-to-volume": {
+        args1, args2
+    }}));
+
     const child1 = spawn("docker", args1);
 
     child1.stdout.on('data', (data) => {
@@ -124,7 +128,9 @@ export const writeKeyToVolume = async (key: string) => {
         extensionOutput.appendLine(data.toString());
     });
 
-    const child2 = spawn("docker", args2);
+    const child2 = spawn("docker", args2, {
+        shell: process.platform === 'win32'
+    });
     child2.stdout.on('data', (data) => {
         extensionOutput.appendLine(data.toString());
     });

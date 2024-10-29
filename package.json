@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.1.8-ghu1",
+  "version": "0.1.8-ghu2",
   "publisher": "docker",
   "repository": {
     "type": "git",

@@ -172,7 +172,8 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         progress.report({ increment: 5, message: "Running..." });
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
-        await spawnPromptImage(promptOption.id, hostDir, Username || 'vscode-user', Password, process.platform, async (json) => {
+        const platformArg = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
+        await spawnPromptImage(promptOption.id, hostDir, Username || 'vscode-user', Password, platformArg, async (json) => {
             extensionOutput.appendLine(JSON.stringify(json))
             switch (json.method) {
                 case 'functions':
