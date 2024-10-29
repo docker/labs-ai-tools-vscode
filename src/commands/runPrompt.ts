@@ -9,6 +9,8 @@ import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { getCredential } from "../utils/credential";
 import { setProjectDir } from "./setProjectDir";
 import { postToBackendSocket } from "../utils/ddSocket";
+import { extensionOutput } from "../extension";
+import { randomUUID } from "crypto";
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -132,13 +134,15 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         return vscode.window.showErrorMessage("No project path set. Please set the project path in settings or run a local prompt from a workspace.");
     }
 
+    const hostDir = runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath;
+
     progress.report({ increment: 5, message: "Checking for project path..." });
 
     progress.report({ increment: 5, message: "Writing prompt output file..." });
 
     const apiKey = await secrets.get("openAIKey");
 
-    const { editor, doc } = await createOutputBuffer();
+    const { editor, doc } = await createOutputBuffer('prompt-output' + randomUUID() + '.md', hostDir);
 
     if (!editor || !doc) {
         postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: 'No editor or document found' } });
@@ -168,27 +172,24 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
         progress.report({ increment: 5, message: "Running..." });
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
-        await spawnPromptImage(promptOption.id, runningLocal ? inputWorkspace! : workspaceFolder!.uri.fsPath, Username || 'vscode-user', Password, process.platform, async (json) => {
+        await spawnPromptImage(promptOption.id, hostDir, Username || 'vscode-user', Password, process.platform, async (json) => {
+            extensionOutput.appendLine(JSON.stringify(json))
             switch (json.method) {
                 case 'functions':
-                    const functions = json.params;
-                    for (const func of functions) {
-                        const { id, function: { arguments: args } } = func;
-
-                        const params_str = args;
-                        let functionRange = ranges[id] || getBaseFunctionRange();
-                        if (functionRange.isSingleLine) {
-                            // Add function to the end of the file and update the range
-                            await writeToEditor(`\`\`\`json\n${params_str}`);
-                            functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
-                        }
-                        else {
-                            // Replace existing function and update the range
-                            await writeToEditor(params_str, functionRange);
-                            functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
-                        }
-                        ranges[id] = functionRange;
+                    const { id, function: { arguments: args } } = json.params;
+                    const params_str = args;
+                    let functionRange = ranges[id] || getBaseFunctionRange();
+                    if (functionRange.isSingleLine) {
+                        // Add function to the end of the file and update the range
+                        await writeToEditor(`\`\`\`json\n${params_str}`);
+                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
                     }
+                    else {
+                        // Replace existing function and update the range
+                        await writeToEditor(params_str, functionRange);
+                        functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, functionRange.end.line + params_str.split('\n').length, 0);
+                    }
+                    ranges[id] = functionRange;
                     break;
                 case 'functions-done':
                     await writeToEditor('\n```\n\n');
@@ -199,7 +200,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(`${header} ROLE ${role}${content ? ` (${content})` : ''}\n\n`);
                     break;
                 case 'functions-done':
-                    await writeToEditor(json.params.content);
+                    await writeToEditor(json.params.content+'\n\n');
                     break;
                 case 'message':
                     await writeToEditor(json.params.content);
@@ -219,13 +220,15 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(json.params.messages.map((m: any) => `# ${m.role}\n${m.content}`).join('\n') + '\n');
                     break;
                 case 'error':
-                    await writeToEditor('```error\n' + json.params.content + '\n```\n');
-                    postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: json.params.content } });
+                    const errorMSG = String(json.params.content) + String(json.params.message)
+                    await writeToEditor('```error\n' + errorMSG + '\n```\n');
+                    postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: errorMSG } });
                     break;
                 default:
                     await writeToEditor(JSON.stringify(json, null, 2));
             }
         }, token);
+        await doc.save();
     } catch (e: unknown) {
         void vscode.window.showErrorMessage("Error running prompt");
         await writeToEditor('```json\n' + (e as Error).toString() + '\n```');
