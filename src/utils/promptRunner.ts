@@ -122,19 +122,19 @@ export const writeKeyToVolume = async (key: string) => {
     const child1 = spawn("docker", args1);
 
     child1.stdout.on('data', (data) => {
-        extensionOutput.appendLine(data.toString());
+        extensionOutput.appendLine(JSON.stringify({stdout:data.toString()}));
     });
     child1.stderr.on('data', (data) => {
-        extensionOutput.appendLine(data.toString());
+        extensionOutput.appendLine(JSON.stringify({stderr:data.toString()}));
     });
 
     const child2 = spawn("docker", args2, {
-        shell: process.platform === 'win32'
+        shell: true
     });
     child2.stdout.on('data', (data) => {
-        extensionOutput.appendLine(data.toString());
+        extensionOutput.appendLine(JSON.stringify({stdout:data.toString()}));
     });
     child2.stderr.on('data', (data) => {
-        extensionOutput.appendLine(data.toString());
+        extensionOutput.appendLine(JSON.stringify({stderr:data.toString()}));
     });
 };

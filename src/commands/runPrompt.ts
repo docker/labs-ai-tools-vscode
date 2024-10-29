@@ -84,7 +84,7 @@ const getWorkspaceFolder = async () => {
 };
 
 
-export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window, cancellable: true }, async (progress, token) => {
+export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true }, async (progress, token) => {
     postToBackendSocket({ event: 'eventLabsPromptRunPrepare', properties: { mode } });
     const result = await checkDockerDesktop();
     if (result === 'RETRY') {
