@@ -1,9 +1,11 @@
 import { spawn } from "child_process";
 import { CancellationToken, commands, window, workspace } from "vscode";
 import { setThreadId } from "../commands/setThreadId";
-import * as rpc from 'vscode-jsonrpc/node';
 import { notifications } from "./notifications";
 import { extensionOutput } from "../extension";
+import * as rpc from 'vscode-jsonrpc/node';
+
+const output = window.createOutputChannel("Docker Labs: AI Tools");
 
 export const getRunArgs = async (promptRef: string, projectDir: string, username: string, pat: string, platform: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
@@ -91,6 +93,15 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
 
 };
 
+const getJSONArgForPlatform = (json: object) =>{
+    if (process.platform === 'win32') {
+        return `"` + JSON.stringify(json).replace(/"/g, '\\"') + `"`
+    }
+    else {
+        return `'` + JSON.stringify(json) + `'`
+    }
+}
+
 export const writeKeyToVolume = async (key: string) => {
 
     const args1 = ["pull", "vonwig/function_write_files"];
@@ -101,7 +112,7 @@ export const writeKeyToVolume = async (key: string) => {
         "--rm",
         "--workdir", "/secret",
         "vonwig/function_write_files",
-        `'` + JSON.stringify({ files: [{ path: ".openai-api-key", content: key, executable: false }] }) + `'`
+        getJSONArgForPlatform({ files: [{ path: ".openai-api-key", content: key, executable: false }] })
     ];
 
     const child1 = spawn("docker", args1);
