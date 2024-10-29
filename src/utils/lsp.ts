@@ -36,7 +36,7 @@ const clientOptions: LanguageClientOptions = {
     documentSelector: [
         { language: "markdown", scheme: "file" },
     ],
-    progressOnInitialization: true,
+    progressOnInitialization: false,
     outputChannel: window.createOutputChannel("Docker LSP (Markdown)"),
     revealOutputChannelOn: 4,
 };

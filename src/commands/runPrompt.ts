@@ -84,14 +84,15 @@ const getWorkspaceFolder = async () => {
 };
 
 
-export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true }, async (progress, token) => {
+export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window, cancellable: true }, async (progress, token) => {
+    progress.report({ increment: 1, message: "Starting..." });
     postToBackendSocket({ event: 'eventLabsPromptRunPrepare', properties: { mode } });
     const result = await checkDockerDesktop();
     if (result === 'RETRY') {
         return runPrompt(secrets, mode);
     }
 
-    progress.report({ increment: 0, message: "Starting..." });
+
     progress.report({ increment: 5, message: "Checking for OpenAI key..." });
 
     const hasOpenAIKey = await verifyHasOpenAIKey(secrets, true);
@@ -177,11 +178,12 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
             extensionOutput.appendLine(JSON.stringify(json))
             switch (json.method) {
                 case 'functions':
-                    const { id, function: { arguments: args } } = json.params;
+                    const { id, function: { arguments: args, name } } = json.params;
                     const params_str = args;
                     let functionRange = ranges[id] || getBaseFunctionRange();
                     if (functionRange.isSingleLine) {
                         // Add function to the end of the file and update the range
+                        progress.report({ increment: 0, message: `Running ${name}` });
                         await writeToEditor(`\`\`\`json\n${params_str}`);
                         functionRange = new vscode.Range(functionRange.start.line, functionRange.start.character, doc.lineCount, 0);
                     }
@@ -192,16 +194,13 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     }
                     ranges[id] = functionRange;
                     break;
-                case 'functions-done':
-                    await writeToEditor('\n```\n\n');
-                    break;
                 case 'start':
                     const { level, role, content } = json.params;
                     const header = Array(level + 1).fill('#').join('');
                     await writeToEditor(`${header} ROLE ${role}${content ? ` (${content})` : ''}\n\n`);
                     break;
                 case 'functions-done':
-                    await writeToEditor(json.params.content+'\n\n');
+                    await writeToEditor('\n```'+`\n\n*entering tool*\n\n`);
                     break;
                 case 'message':
                     await writeToEditor(json.params.content);

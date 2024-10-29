@@ -90,6 +90,11 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
         connection.dispose();
     });
 
+    return new Promise<void>((resolve) => {
+        childProcess.on('exit', () => {
+            resolve();
+        });
+    });
 
 };
 
