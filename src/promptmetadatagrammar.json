@@ -8,7 +8,7 @@
     ],
     "repository": {
         "prompt-metadata-keyword": {
-            "match": "(?i)(functions)|(extractors)|(model)|(stream)|(url)(?-i)",
+            "match": "(?i)(functions)|(extractors)|(model)|(stream)|(url)|(tools)(?-i)",
             "name": "keyword.function.prompt.metadata"
         }
     }
