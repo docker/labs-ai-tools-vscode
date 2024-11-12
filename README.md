@@ -14,7 +14,7 @@ This project is a research prototype. It is ready to try and will give results f
 *Docker internal users: You must be opted-out of mandatory sign-in.*
 
 1. Install latest VSIX file https://github.com/docker/labs-ai-tools-vscode/releases
-2. Execute command `>Set OpenAI API key...` and enter your OpenAI secret key.
+2. Execute command `>Docker AI: Set OpenAI API key...` and enter your OpenAI secret key.
     You can run a prompt with a local model. Docs coming soon.
 3. Run a prompt
 
@@ -49,7 +49,7 @@ My project has the following files:
 
 ```
 
-Run command `>Run current file as prompt`
+Run command `>Docker AI: Run this prompt`
 
 ## Docs
 https://vonwig.github.io/prompts.docs
