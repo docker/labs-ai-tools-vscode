@@ -5,6 +5,7 @@ import { spawn, spawnSync } from 'child_process';
 import semver from 'semver';
 import commands from './commands';
 import { postToBackendSocket, setDefaultProperties } from './utils/ddSocket';
+import { checkDockerDesktop } from './utils/dockerDesktop';
 
 export let ctx: vscode.ExtensionContext;
 
@@ -74,6 +75,10 @@ const checkOutdatedVersionInstalled = async () => {
 };
 
 export async function activate(context: vscode.ExtensionContext) {
+	const result = await checkDockerDesktop();
+	if (result === 'RETRY') {
+		return vscode.commands.executeCommand('workbench.action.reloadWindow');
+	}
 	checkOutdatedVersionInstalled();
 	checkVersion();
 	setDefaultProperties(context);

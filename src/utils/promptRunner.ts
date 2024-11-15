@@ -1,11 +1,15 @@
-import { spawn } from "child_process";
+import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import { CancellationToken, commands, window, workspace } from "vscode";
 import { setThreadId } from "../commands/setThreadId";
 import { notifications } from "./notifications";
 import { extensionOutput } from "../extension";
 import * as rpc from 'vscode-jsonrpc/node';
 
-const output = window.createOutputChannel("Docker Labs: AI Tools");
+const activePrompts: { [key: string]: Function } = {};
+
+export const sendKillSignalToActivePrompts = () =>
+    Object.values(activePrompts).map(kill => kill());
+
 
 export const getRunArgs = async (promptRef: string, projectDir: string, username: string, pat: string, platform: string, render = false) => {
     const isLocal = promptRef.startsWith('local://');
@@ -52,12 +56,19 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
     const args = await getRunArgs(promptArg!, projectDir!, username, platform, pat);
     callback({ method: 'message', params: { debug: `Running ${args.join(' ')}` } });
     const childProcess = spawn("docker", args);
+    const pid = childProcess.pid;
+
+    if (pid) {
+        activePrompts[pid] = childProcess.kill;
+        childProcess.on('exit', () => {
+            delete activePrompts[pid];
+        });
+    }
 
     let connection = rpc.createMessageConnection(
         new rpc.StreamMessageReader(childProcess.stdout),
         new rpc.StreamMessageWriter(childProcess.stdin)
     );
-
     const notificationBuffer: { method: string, params: object }[] = []
 
     let processingBuffer = false;
@@ -78,9 +89,9 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
         }
     }
 
-    for (const [type, properties] of Object.entries(notifications)){
+    for (const [type, properties] of Object.entries(notifications)) {
         // @ts-expect-error
-        connection.onNotification(properties, (params)=> pushNotification(type, params))
+        connection.onNotification(properties, (params) => pushNotification(type, params))
     }
 
     connection.listen();
@@ -98,7 +109,7 @@ export const spawnPromptImage = async (promptArg: string, projectDir: string, us
 
 };
 
-const getJSONArgForPlatform = (json: object) =>{
+const getJSONArgForPlatform = (json: object) => {
     if (process.platform === 'win32') {
         return `"` + JSON.stringify(json).replace(/"/g, '\\"') + `"`
     }
@@ -120,26 +131,28 @@ export const writeKeyToVolume = async (key: string) => {
         getJSONArgForPlatform({ files: [{ path: ".openai-api-key", content: key, executable: false }] })
     ];
 
-    extensionOutput.appendLine(JSON.stringify({"write-open-ai-key-to-volume": {
-        args1, args2
-    }}));
+    extensionOutput.appendLine(JSON.stringify({
+        "write-open-ai-key-to-volume": {
+            args1, args2
+        }
+    }));
 
     const child1 = spawn("docker", args1);
 
     child1.stdout.on('data', (data) => {
-        extensionOutput.appendLine(JSON.stringify({stdout:data.toString()}));
+        extensionOutput.appendLine(JSON.stringify({ stdout: data.toString() }));
     });
     child1.stderr.on('data', (data) => {
-        extensionOutput.appendLine(JSON.stringify({stderr:data.toString()}));
+        extensionOutput.appendLine(JSON.stringify({ stderr: data.toString() }));
     });
 
     const child2 = spawn("docker", args2, {
         shell: true
     });
     child2.stdout.on('data', (data) => {
-        extensionOutput.appendLine(JSON.stringify({stdout:data.toString()}));
+        extensionOutput.appendLine(JSON.stringify({ stdout: data.toString() }));
     });
     child2.stderr.on('data', (data) => {
-        extensionOutput.appendLine(JSON.stringify({stderr:data.toString()}));
+        extensionOutput.appendLine(JSON.stringify({ stderr: data.toString() }));
     });
 };

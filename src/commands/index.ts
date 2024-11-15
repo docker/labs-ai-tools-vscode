@@ -5,6 +5,7 @@ import { runHotCommand } from './runHotCommand';
 import { deletePrompt, savePrompt } from './manageSavedPrompts';
 import { setProjectDir } from './setProjectDir';
 import { setThreadId } from './setThreadId';
+import killActivePrompts from './killActivePrompts';
 
 type CTX = { secrets: any }
 
@@ -25,6 +26,7 @@ const commands = (context: CTX) => [
             vscode.window.showInformationMessage(`Debug mode is now ${currentValue ? 'disabled' : 'enabled'}.`);
         }
     },
+    { id: 'docker.labs-ai-tools-vscode.kill-active-prompts', callback: killActivePrompts },
 ]
 
 export default (context: CTX) => commands(context).map((comm) => vscode.commands.registerCommand(comm.id, comm.callback))
