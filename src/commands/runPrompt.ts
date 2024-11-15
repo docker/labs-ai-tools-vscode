@@ -42,8 +42,6 @@ const getWorkspaceFolder = async () => {
 export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window, cancellable: true }, async (progress, token) => {
     progress.report({ increment: 1, message: "Starting..." });
     postToBackendSocket({ event: 'eventLabsPromptRunPrepare', properties: { mode } });
-
-
     progress.report({ increment: 5, message: "Checking for OpenAI key..." });
 
     const hasOpenAIKey = await verifyHasOpenAIKey(secrets, true);
