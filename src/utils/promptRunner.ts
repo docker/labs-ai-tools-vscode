@@ -4,6 +4,7 @@ import { setThreadId } from "../commands/setThreadId";
 import { notifications } from "./notifications";
 import { extensionOutput } from "../extension";
 import * as rpc from 'vscode-jsonrpc/node';
+import path from "path";
 
 const activePrompts: { [key: string]: Function } = {};
 
@@ -20,10 +21,13 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
 
     if (isLocal) {
         const localPromptPath = promptRef.replace('local://', '');
+        const localPromptDirPath = path.dirname(localPromptPath);
+        const localPromptDirName = path.basename(localPromptDirPath);
         const pathSeparator = platform === 'win32' ? '\\' : '/';
-        promptRef = localPromptPath.split(pathSeparator).pop() || 'unknown-local-prompt';
-        promptArgs = [isMarkdown ? "--prompts-dir" : "--prompts-file", `/app/${promptRef}`];
-        mountArgs = ["--mount", `type=bind,source=${localPromptPath},target=/app/${promptRef}`];
+        // Basically the markdown file name eg `prompt.md`
+        promptRef = path.basename(localPromptPath);
+        promptArgs = [isMarkdown ? "--prompts-dir" : "--prompts-file", `/app/${localPromptDirName}/${promptRef}`];
+        mountArgs = ["--mount", `type=bind,source=${localPromptDirPath},target=/app/${localPromptDirName}`];
     }
 
     const baseArgs: string[] = [
