@@ -149,7 +149,7 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(`${header} ROLE ${role}${content ? ` (${content})` : ''}\n\n`);
                     break;
                 case 'functions-done':
-                    await writeToEditor('\n```' + `\n\n*entering tool*\n\n`);
+                    await writeToEditor('\n```\n');
                     break;
                 case 'message':
                     await writeToEditor(json.params.content);
@@ -169,12 +169,12 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
                     await writeToEditor(json.params.messages.map((m: any) => `# ${m.role}\n${m.content}`).join('\n') + '\n');
                     break;
                 case 'error':
-                    const errorMSG = String(json.params.content) + String(json.params.message) + String(json.params.message)
+                    const errorMSG = String(json.params.content) || String(json.params.message) || String(json.params.message)
                     await writeToEditor('```error\n' + errorMSG + '\n```\n');
                     postToBackendSocket({ event: 'eventLabsPromptError', properties: { error: errorMSG } });
                     break;
                 default:
-                    await writeToEditor(JSON.stringify(json, null, 2));
+                    break;
             }
         }, token);
         await doc.save();
