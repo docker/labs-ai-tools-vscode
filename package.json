@@ -2,7 +2,7 @@
   "name": "labs-ai-tools-vscode",
   "displayName": "Labs: AI Tools for VSCode",
   "description": "Run & Debug AI Prompts with Dockerized tools",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "publisher": "docker",
   "repository": {
     "type": "git",
@@ -57,8 +57,8 @@
         "title": "Docker AI: Run markdown commands"
       },
       {
-        "command": "docker.labs-ai-tools-vscode.set-openai-api-key",
-        "title": "Docker AI: Set OpenAI API key"
+        "command": "docker.labs-ai-tools-vscode.set-secret",
+        "title": "Docker AI: Set Secret Key"
       },
       {
         "command": "docker.labs-ai-tools-vscode.save-prompt",

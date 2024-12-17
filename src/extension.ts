@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { setOpenAIKey } from './commands/setOpenAIKey';
+import { showSetSecretDialog } from './commands/secrets';
 import { nativeClient } from './utils/lsp';
 import { spawn, spawnSync } from 'child_process';
 import semver from 'semver';
@@ -84,10 +84,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	setDefaultProperties(context);
 	postToBackendSocket({ event: 'eventLabsPromptActivated' });
 	ctx = context;
-	let setOpenAIKeyCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-openai-api-key', () => {
-		setOpenAIKey(context.secrets);
+	let setProviderSecretCommand = vscode.commands.registerCommand('docker.labs-ai-tools-vscode.set-secret', () => {
+		showSetSecretDialog(context.secrets);
 	});
-	context.subscriptions.push(setOpenAIKeyCommand);
+	context.subscriptions.push(setProviderSecretCommand);
 
 	const pullPromptImage = () => {
 		const process = spawn('docker', ['pull', "vonwig/prompts:latest"]);

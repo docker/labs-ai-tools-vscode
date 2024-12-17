@@ -14,8 +14,7 @@ This project is a research prototype. It is ready to try and will give results f
 *Docker internal users: You must be opted-out of mandatory sign-in.*
 
 1. Install latest VSIX file https://github.com/docker/labs-ai-tools-vscode/releases
-2. Execute command `>Docker AI: Set OpenAI API key...` and enter your OpenAI secret key.
-    You can run a prompt with a local model. Docs coming soon.
+2. Execute command `>Docker AI: Set Secret Key...` to enter the api key for your model provider. This stop is optional if your pompt specifies a local model via `url:` and `model:` attributes.
 3. Run a prompt
 
 ### Local Prompt:

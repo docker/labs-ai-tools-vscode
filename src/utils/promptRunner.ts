@@ -5,6 +5,7 @@ import { notifications } from "./notifications";
 import { extensionOutput } from "../extension";
 import * as rpc from 'vscode-jsonrpc/node';
 import path from "path";
+import modelProviders from "../modelproviders.json";
 
 const activePrompts: { [key: string]: Function } = {};
 
@@ -34,9 +35,10 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
         'run',
         '--rm',
         '-v', '/var/run/docker.sock:/var/run/docker.sock',
-        '-v', 'openai_key:/secret',
+        '-v', 'docker-vsc-secrets:/root/secrets',
+        '-e', 'OPENAI_API_KEY_LOCATION=/root/secrets',
+        '-e', 'CLAUDE_API_KEY_LOCATION=/root/secrets',
         '--mount', 'type=volume,source=docker-prompts,target=/prompts',
-        '-e', 'OPENAI_API_KEY_LOCATION=/secret',
         '-v', "/run/host-services/backend.sock:/host-services/docker-desktop-backend.sock",
         '-e', "DOCKER_DESKTOP_SOCKET_PATH=/host-services/docker-desktop-backend.sock",
     ];
@@ -122,22 +124,25 @@ const getJSONArgForPlatform = (json: object) => {
     }
 }
 
-export const writeKeyToVolume = async (key: string) => {
+export const writeKeyToVolume = async (keyFile: string, keyVal: string) => {
 
     const args1 = ["pull", "vonwig/function_write_files"];
 
     const args2 = [
         "run",
-        "-v", "openai_key:/secret",
+        "-v", `docker-vsc-secrets:/secret`,
         "--rm",
         "--workdir", "/secret",
         "vonwig/function_write_files",
-        getJSONArgForPlatform({ files: [{ path: ".openai-api-key", content: key, executable: false }] })
+        getJSONArgForPlatform({ files: [{ path: keyFile, content: keyVal, executable: false }] })
     ];
 
     extensionOutput.appendLine(JSON.stringify({
-        "write-open-ai-key-to-volume": {
-            args1, args2
+        "write-secret-to-volume": {
+            keyFile,
+            keyVal,
+            args1,
+            args2
         }
     }));
 
