@@ -1,0 +1,18 @@
+[
+    {
+        "label": "Anthropic Claude",
+        "id": "anthropic",
+        "file": ".claude-api-key",
+        "patterns": [
+            "claude-*"
+        ]
+    },
+    {
+        "label": "Open AI",
+        "id": "openai",
+        "file": ".openai-api-key",
+        "patterns": [
+            "gpt-*"
+        ]
+    }
+]

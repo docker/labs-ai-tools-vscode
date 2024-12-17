@@ -5,12 +5,13 @@ import * as vscode from "vscode";
 import { showPromptPicker } from "../utils/promptPicker";
 import { createOutputBuffer } from "../utils/promptFilename";
 import { spawnPromptImage, writeKeyToVolume } from "../utils/promptRunner";
-import { verifyHasOpenAIKey } from "./setOpenAIKey";
 import { getCredential } from "../utils/credential";
 import { setProjectDir } from "./setProjectDir";
 import { postToBackendSocket } from "../utils/ddSocket";
 import { extensionOutput } from "../extension";
 import { randomUUID } from "crypto";
+
+const modelProviders = require('../modelproviders.json') as { label: string, id: string, file: string, patterns: string[] }[];
 
 type PromptOption = 'local-dir' | 'local-file' | 'remote';
 
@@ -42,12 +43,6 @@ const getWorkspaceFolder = async () => {
 export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => void = (secrets: vscode.SecretStorage, mode: PromptOption) => vscode.window.withProgress({ location: vscode.ProgressLocation.Window, cancellable: true }, async (progress, token) => {
     progress.report({ increment: 1, message: "Starting..." });
     postToBackendSocket({ event: 'eventLabsPromptRunPrepare', properties: { mode } });
-    progress.report({ increment: 5, message: "Checking for OpenAI key..." });
-
-    const hasOpenAIKey = await verifyHasOpenAIKey(secrets, true);
-    if (!hasOpenAIKey) {
-        return;
-    }
 
     progress.report({ increment: 5, message: "Checking for workspace..." });
 
@@ -90,8 +85,6 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
 
     progress.report({ increment: 5, message: "Writing prompt output file..." });
 
-    const apiKey = await secrets.get("openAIKey");
-
     const { editor, doc } = await createOutputBuffer('prompt-output' + randomUUID() + '.md', hostDir);
 
     if (!editor || !doc) {
@@ -118,7 +111,19 @@ export const runPrompt: (secrets: vscode.SecretStorage, mode: PromptOption) => v
 
     try {
         progress.report({ increment: 5, message: "Mounting secrets..." });
-        await writeKeyToVolume(apiKey!);
+        for (const provider of modelProviders) {
+            const secret = await secrets.get(provider.id);
+            if (secret) {
+                await writeKeyToVolume(provider.file, secret);
+            }
+            if (provider.id === 'openai' && !secret) {
+                const oldOpenAIKey = await secrets.get('openAIKey');
+                if (oldOpenAIKey) {
+                    await writeKeyToVolume(provider.file, oldOpenAIKey);
+                }
+
+            }
+        }
         progress.report({ increment: 5, message: "Running..." });
         const ranges: Record<string, vscode.Range> = {};
         const getBaseFunctionRange = () => new vscode.Range(doc.lineCount, 0, doc.lineCount, 0);
