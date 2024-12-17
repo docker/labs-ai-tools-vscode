@@ -60,7 +60,8 @@ export const getRunArgs = async (promptRef: string, projectDir: string, username
 
 export const spawnPromptImage = async (promptArg: string, projectDir: string, username: string, platform: string, pat: string, callback: (json: any) => Promise<void>, token: CancellationToken) => {
     const args = await getRunArgs(promptArg!, projectDir!, username, platform, pat);
-    callback({ method: 'message', params: { debug: `Running ${args.join(' ')}` } });
+    const argsString = args.join(' ').replace(/dckr_pat_.*$/g, 'dckr_pat_****');
+    callback({ method: 'message', params: { debug: `Running ${argsString}` } });
     const childProcess = spawn("docker", args);
     const pid = childProcess.pid;
 
